@@ -1,0 +1,4 @@
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, sourceCpp)
+import(data.table)
+useDynLib(rGYPSY, .registration = TRUE)

@@ -1,0 +1,17 @@
+Package: rGYPSY
+Type: Package
+Title: R Version of GYPSY Functions
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "Benjamin", "Panes",
+      email = "bpanes@ualberta.ca",
+      role = c("aut", "cre")
+    )
+  )
+Description: An implementation of Growth and Yield Projection System functions in R.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Imports: Rcpp, data.table
+LinkingTo: Rcpp
