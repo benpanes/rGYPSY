@@ -29,6 +29,44 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// GYPSY_BAinc_cpp
+NumericVector GYPSY_BAinc_cpp(CharacterVector spp, NumericVector bhage, NumericVector sc, NumericVector den0, NumericVector si_b, NumericVector psi, NumericVector ba, NumericVector sdf_aw, NumericVector sdf_sb, NumericVector sdf_sw, NumericVector sdf_pl);
+RcppExport SEXP _rGYPSY_GYPSY_BAinc_cpp(SEXP sppSEXP, SEXP bhageSEXP, SEXP scSEXP, SEXP den0SEXP, SEXP si_bSEXP, SEXP psiSEXP, SEXP baSEXP, SEXP sdf_awSEXP, SEXP sdf_sbSEXP, SEXP sdf_swSEXP, SEXP sdf_plSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< CharacterVector >::type spp(sppSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type bhage(bhageSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sc(scSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type den0(den0SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type si_b(si_bSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type psi(psiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ba(baSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_aw(sdf_awSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_sb(sdf_sbSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_sw(sdf_swSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_pl(sdf_plSEXP);
+    rcpp_result_gen = Rcpp::wrap(GYPSY_BAinc_cpp(spp, bhage, sc, den0, si_b, psi, ba, sdf_aw, sdf_sb, sdf_sw, sdf_pl));
+    return rcpp_result_gen;
+END_RCPP
+}
+// GYPSY_Project_cpp
+Rcpp::List GYPSY_Project_cpp(List st, NumericVector stump_ht, NumericVector stump_dob, NumericVector top_dib, int simlen, int alignlen, bool detail);
+RcppExport SEXP _rGYPSY_GYPSY_Project_cpp(SEXP stSEXP, SEXP stump_htSEXP, SEXP stump_dobSEXP, SEXP top_dibSEXP, SEXP simlenSEXP, SEXP alignlenSEXP, SEXP detailSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type st(stSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type stump_ht(stump_htSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type stump_dob(stump_dobSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type top_dib(top_dibSEXP);
+    Rcpp::traits::input_parameter< int >::type simlen(simlenSEXP);
+    Rcpp::traits::input_parameter< int >::type alignlen(alignlenSEXP);
+    Rcpp::traits::input_parameter< bool >::type detail(detailSEXP);
+    rcpp_result_gen = Rcpp::wrap(GYPSY_Project_cpp(st, stump_ht, stump_dob, top_dib, simlen, alignlen, detail));
+    return rcpp_result_gen;
+END_RCPP
+}
 // GYPSY_SI_cpp
 NumericVector GYPSY_SI_cpp(CharacterVector spp, NumericVector ht, NumericVector age, std::string agetype, int ndx, int iter, double tol, double bh, double sh);
 RcppExport SEXP _rGYPSY_GYPSY_SI_cpp(SEXP sppSEXP, SEXP htSEXP, SEXP ageSEXP, SEXP agetypeSEXP, SEXP ndxSEXP, SEXP iterSEXP, SEXP tolSEXP, SEXP bhSEXP, SEXP shSEXP) {
@@ -49,25 +87,25 @@ BEGIN_RCPP
 END_RCPP
 }
 // GYPSY_PSI_cpp
-Rcpp::List GYPSY_PSI_cpp(CharacterVector stand, NumericVector aw_ps, NumericVector aw_age_t, NumericVector aw_si_t, NumericVector sb_ps, NumericVector sb_age_t, NumericVector sb_si_t, NumericVector sw_ps, NumericVector sw_age_t, NumericVector sw_si_t, NumericVector pl_ps, NumericVector pl_age_t, NumericVector pl_si_t);
-RcppExport SEXP _rGYPSY_GYPSY_PSI_cpp(SEXP standSEXP, SEXP aw_psSEXP, SEXP aw_age_tSEXP, SEXP aw_si_tSEXP, SEXP sb_psSEXP, SEXP sb_age_tSEXP, SEXP sb_si_tSEXP, SEXP sw_psSEXP, SEXP sw_age_tSEXP, SEXP sw_si_tSEXP, SEXP pl_psSEXP, SEXP pl_age_tSEXP, SEXP pl_si_tSEXP) {
+Rcpp::List GYPSY_PSI_cpp(CharacterVector stand, NumericVector aw_ps, NumericVector aw_age_t, NumericVector aw_si_b, NumericVector sb_ps, NumericVector sb_age_t, NumericVector sb_si_b, NumericVector sw_ps, NumericVector sw_age_t, NumericVector sw_si_b, NumericVector pl_ps, NumericVector pl_age_t, NumericVector pl_si_b);
+RcppExport SEXP _rGYPSY_GYPSY_PSI_cpp(SEXP standSEXP, SEXP aw_psSEXP, SEXP aw_age_tSEXP, SEXP aw_si_bSEXP, SEXP sb_psSEXP, SEXP sb_age_tSEXP, SEXP sb_si_bSEXP, SEXP sw_psSEXP, SEXP sw_age_tSEXP, SEXP sw_si_bSEXP, SEXP pl_psSEXP, SEXP pl_age_tSEXP, SEXP pl_si_bSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< CharacterVector >::type stand(standSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type aw_ps(aw_psSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type aw_age_t(aw_age_tSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type aw_si_t(aw_si_tSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type aw_si_b(aw_si_bSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type sb_ps(sb_psSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type sb_age_t(sb_age_tSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type sb_si_t(sb_si_tSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sb_si_b(sb_si_bSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type sw_ps(sw_psSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type sw_age_t(sw_age_tSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type sw_si_t(sw_si_tSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sw_si_b(sw_si_bSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type pl_ps(pl_psSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type pl_age_t(pl_age_tSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type pl_si_t(pl_si_tSEXP);
-    rcpp_result_gen = Rcpp::wrap(GYPSY_PSI_cpp(stand, aw_ps, aw_age_t, aw_si_t, sb_ps, sb_age_t, sb_si_t, sw_ps, sw_age_t, sw_si_t, pl_ps, pl_age_t, pl_si_t));
+    Rcpp::traits::input_parameter< NumericVector >::type pl_si_b(pl_si_bSEXP);
+    rcpp_result_gen = Rcpp::wrap(GYPSY_PSI_cpp(stand, aw_ps, aw_age_t, aw_si_b, sb_ps, sb_age_t, sb_si_b, sw_ps, sw_age_t, sw_si_b, pl_ps, pl_age_t, pl_si_b));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -113,13 +151,53 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// GYPSY_N_cpp
+NumericVector GYPSY_N_cpp(CharacterVector spp, NumericVector age, NumericVector sdf, NumericVector si_b, NumericVector psi, NumericVector sdf_aw, NumericVector sdf_sw, NumericVector sdf_sb);
+RcppExport SEXP _rGYPSY_GYPSY_N_cpp(SEXP sppSEXP, SEXP ageSEXP, SEXP sdfSEXP, SEXP si_bSEXP, SEXP psiSEXP, SEXP sdf_awSEXP, SEXP sdf_swSEXP, SEXP sdf_sbSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< CharacterVector >::type spp(sppSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type age(ageSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf(sdfSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type si_b(si_bSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type psi(psiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_aw(sdf_awSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_sw(sdf_swSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sdf_sb(sdf_sbSEXP);
+    rcpp_result_gen = Rcpp::wrap(GYPSY_N_cpp(spp, age, sdf, si_b, psi, sdf_aw, sdf_sw, sdf_sb));
+    return rcpp_result_gen;
+END_RCPP
+}
+// GYPSY_Vol_cpp
+Rcpp::List GYPSY_Vol_cpp(CharacterVector spp, NumericVector ba, NumericVector topht, NumericVector n, NumericVector bhage, NumericVector stump_ht, NumericVector stump_dob, NumericVector top_dib);
+RcppExport SEXP _rGYPSY_GYPSY_Vol_cpp(SEXP sppSEXP, SEXP baSEXP, SEXP tophtSEXP, SEXP nSEXP, SEXP bhageSEXP, SEXP stump_htSEXP, SEXP stump_dobSEXP, SEXP top_dibSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< CharacterVector >::type spp(sppSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ba(baSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type topht(tophtSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type n(nSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type bhage(bhageSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type stump_ht(stump_htSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type stump_dob(stump_dobSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type top_dib(top_dibSEXP);
+    rcpp_result_gen = Rcpp::wrap(GYPSY_Vol_cpp(spp, ba, topht, n, bhage, stump_ht, stump_dob, top_dib));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_rGYPSY_GYPSY_Age_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Age_cpp, 9},
+    {"_rGYPSY_GYPSY_BAinc_cpp", (DL_FUNC) &_rGYPSY_GYPSY_BAinc_cpp, 11},
+    {"_rGYPSY_GYPSY_Project_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Project_cpp, 7},
     {"_rGYPSY_GYPSY_SI_cpp", (DL_FUNC) &_rGYPSY_GYPSY_SI_cpp, 9},
     {"_rGYPSY_GYPSY_PSI_cpp", (DL_FUNC) &_rGYPSY_GYPSY_PSI_cpp, 13},
     {"_rGYPSY_GYPSY_SDF_cpp", (DL_FUNC) &_rGYPSY_GYPSY_SDF_cpp, 19},
     {"_rGYPSY_GYPSY_Ht_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Ht_cpp, 3},
+    {"_rGYPSY_GYPSY_N_cpp", (DL_FUNC) &_rGYPSY_GYPSY_N_cpp, 8},
+    {"_rGYPSY_GYPSY_Vol_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Vol_cpp, 8},
     {NULL, NULL, 0}
 };
 

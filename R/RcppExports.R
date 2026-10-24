@@ -5,12 +5,20 @@ GYPSY_Age_cpp <- function(spp, si, h = NULL, sitype = "B", ndx = 1L, iter = 1000
     .Call(`_rGYPSY_GYPSY_Age_cpp`, spp, si, h, sitype, ndx, iter, tol, bh, sh)
 }
 
+GYPSY_BAinc_cpp <- function(spp, bhage, sc, den0, si_b, psi, ba, sdf_aw, sdf_sb, sdf_sw, sdf_pl) {
+    .Call(`_rGYPSY_GYPSY_BAinc_cpp`, spp, bhage, sc, den0, si_b, psi, ba, sdf_aw, sdf_sb, sdf_sw, sdf_pl)
+}
+
+GYPSY_Project_cpp <- function(st, stump_ht, stump_dob, top_dib, simlen = 200L, alignlen = 180L, detail = FALSE) {
+    .Call(`_rGYPSY_GYPSY_Project_cpp`, st, stump_ht, stump_dob, top_dib, simlen, alignlen, detail)
+}
+
 GYPSY_SI_cpp <- function(spp, ht, age, agetype = "T", ndx = 2L, iter = 1000L, tol = 1e-8, bh = 1.3, sh = 0.3) {
     .Call(`_rGYPSY_GYPSY_SI_cpp`, spp, ht, age, agetype, ndx, iter, tol, bh, sh)
 }
 
-GYPSY_PSI_cpp <- function(stand, aw_ps, aw_age_t, aw_si_t, sb_ps, sb_age_t, sb_si_t, sw_ps, sw_age_t, sw_si_t, pl_ps, pl_age_t, pl_si_t) {
-    .Call(`_rGYPSY_GYPSY_PSI_cpp`, stand, aw_ps, aw_age_t, aw_si_t, sb_ps, sb_age_t, sb_si_t, sw_ps, sw_age_t, sw_si_t, pl_ps, pl_age_t, pl_si_t)
+GYPSY_PSI_cpp <- function(stand, aw_ps, aw_age_t, aw_si_b, sb_ps, sb_age_t, sb_si_b, sw_ps, sw_age_t, sw_si_b, pl_ps, pl_age_t, pl_si_b) {
+    .Call(`_rGYPSY_GYPSY_PSI_cpp`, stand, aw_ps, aw_age_t, aw_si_b, sb_ps, sb_age_t, sb_si_b, sw_ps, sw_age_t, sw_si_b, pl_ps, pl_age_t, pl_si_b)
 }
 
 GYPSY_SDF_cpp <- function(stand, aw_age_b, aw_n, aw_si_b, aw_psi, sb_age_t, sb_n, sb_si_b, sb_psi, sw_age_t, sw_n, sw_si_b, sw_psi, pl_age_t, pl_n, pl_si_b, pl_psi, iter = 1000L, tol = 1e-8) {
@@ -19,5 +27,13 @@ GYPSY_SDF_cpp <- function(stand, aw_age_b, aw_n, aw_si_b, aw_psi, sb_age_t, sb_n
 
 GYPSY_Ht_cpp <- function(spp, si_t, age_t) {
     .Call(`_rGYPSY_GYPSY_Ht_cpp`, spp, si_t, age_t)
+}
+
+GYPSY_N_cpp <- function(spp, age, sdf, si_b, psi, sdf_aw, sdf_sw, sdf_sb) {
+    .Call(`_rGYPSY_GYPSY_N_cpp`, spp, age, sdf, si_b, psi, sdf_aw, sdf_sw, sdf_sb)
+}
+
+GYPSY_Vol_cpp <- function(spp, ba, topht, n, bhage, stump_ht, stump_dob, top_dib) {
+    .Call(`_rGYPSY_GYPSY_Vol_cpp`, spp, ba, topht, n, bhage, stump_ht, stump_dob, top_dib)
 }
 

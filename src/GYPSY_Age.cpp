@@ -66,7 +66,7 @@ static inline SIResult AW_SI(double       sibh,
   double logk3x_b2 = log(k3x)/b2;
   double tage      = exp(logk3x_b2*logk3x_b2)-1;
 
-  double agen;
+  double agen = tage;   // ndx 4-6 return SI or Y2BH/Y2SH, age not used
   if      (ndx == 1)
     agen = tage;
   else if (ndx == 2)
@@ -117,7 +117,7 @@ static inline SIResult SB_SI(double       sibh,
   double logk3x_b2 = log(k3x)/b2;
   double tage      = exp(logk3x_b2*logk3x_b2)-1;
 
-  double agen;
+  double agen = tage;   // ndx 4-6 return SI or Y2BH/Y2SH, age not used
   if      (ndx == 1)
     agen = tage;
   else if (ndx == 2)
@@ -168,7 +168,7 @@ static inline SIResult SW_SI(double       sibh,
   double logk3x_b2 = log(k3x)/b2;
   double tage      = sqrt(exp(logk3x_b2*logk3x_b2)-1);
 
-  double agen;
+  double agen = tage;   // ndx 4-6 return SI or Y2BH/Y2SH, age not used
   if      (ndx == 1)
     agen = tage;
   else if (ndx == 2)
@@ -219,7 +219,7 @@ static inline SIResult PL_SI(double       sibh,
   double logk3x_b2 = log(k3x)/b2;
   double tage      = exp(logk3x_b2*logk3x_b2)-1;
 
-  double agen;
+  double agen = tage;   // ndx 4-6 return SI or Y2BH/Y2SH, age not used
   if      (ndx == 1)
     agen = tage;
   else if (ndx == 2)
@@ -340,8 +340,8 @@ NumericVector GYPSY_Age_cpp(CharacterVector spp,
       y2sh  = res.y2sh;
     }
     if      (ndx <  4)                  result[i] = age;
-    else if (ndx == 4 & sitype == "B")  result[i] = si1;
-    else if (ndx == 4 & sitype == "T")  result[i] = sibh;
+    else if (ndx == 4 && sitype == "B") result[i] = si1;
+    else if (ndx == 4 && sitype == "T") result[i] = sibh;
     else if (ndx == 5)                  result[i] = y2bh;
     else                                result[i] = y2sh;
   }

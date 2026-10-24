@@ -224,10 +224,10 @@ NumericVector GYPSY_SI_cpp(CharacterVector spp,
     if (agetype == "B")
       if (ht[i] < bh || NumericVector::is_na(ht[i]))
         errors.push_back("Row " + std::to_string(i+1) + ": ht must be >= breast height.");
-    if ((s == "AW" || s == "PL") && age[i] <= 7.5)
-      errors.push_back("Row " + std::to_string(i+1) + ": age must be > 7.5 for AW or PL.");
-    if ((s == "SW" || s == "SB") && age[i] <= 9.5)
-      errors.push_back("Row " + std::to_string(i+1) + ": age must be > 9.5 for SW or SB.");
+    if ((s == "AW" || s == "PL") && age[i] < 7.5)
+      errors.push_back("Row " + std::to_string(i+1) + ": age must be >= 7.5 for AW or PL.");
+    if ((s == "SW" || s == "SB") && age[i] < 9.5)
+      errors.push_back("Row " + std::to_string(i+1) + ": age must be >= 9.5 for SW or SB.");
   }
   if (!errors.empty()) {
     std::string msg;
