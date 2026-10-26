@@ -14,7 +14,8 @@ GYPSY_Ht(spp, si_t, age_t)
 \item{age_t}{Total age.}
 }
 \value{
-Top height (m).
+Top height (m). Arguments given as a single value are repeated to
+match the longest input, with a warning.
 }
 \description{
 Top height from site index and age

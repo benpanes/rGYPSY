@@ -37,8 +37,25 @@ test_that("density at the SDF age returns the observed density", {
 test_that("GYPSY_Sim checks its inputs", {
   expect_error(GYPSY_Sim(1, 20, "XX", 1000, age = 20, ht = 8), "Species must be")
   expect_error(GYPSY_Sim(1, 20, "PL", 1000, age = 20), "2 of SI, Age, and Top Height")
-  expect_error(GYPSY_Sim(c(1, 1), 20, "PL", 1000, age = 20, ht = 8), "Duplicate")
+  expect_error(GYPSY_Sim(c(1, 1), c(20, 20), c("PL", "PL"), c(1000, 1000),
+                         age = c(20, 20), ht = c(8, 8)), "Duplicate")
   expect_error(GYPSY_Sim(1, 20, "PL", 1000, age = 20, ht = 8, stump_ht = 0.5), "stump_ht")
+})
+
+test_that("single values are repeated, warning only for supplied data inputs", {
+  expect_warning(h <- GYPSY_Ht("SW", si_t = 15, age_t = c(20, 40)), "spp, si_t")
+  expect_equal(h, GYPSY_Ht(c("SW", "SW"), c(15, 15), c(20, 40)))
+  expect_warning(GYPSY_SI(spp, 12, age), "ht")
+  expect_warning(GYPSY_Age("PL", si = c(15, 18), ht = c(10, 10)), "spp")
+  expect_warning(GYPSY_SI_convert("PL", si = c(15, 18)), "spp")
+  # Defaults (psi, competitor SDFs) and merch standards repeat silently
+  expect_no_warning(GYPSY_N(c("PL", "PL"), c(10, 30), c(1800, 1800), c(17, 17)))
+  expect_no_warning(GYPSY_Vol(c("SW", "PL"), c(20, 30), c(18, 20), c(800, 1500),
+                              c(55, 60), stump_dob = 13))
+  expect_warning(GYPSY_Vol(c("SW", "PL"), 20, c(18, 20), c(800, 1500), c(55, 60)),
+                 "2 rows: ba$")
+  expect_error(suppressWarnings(GYPSY_Ht(spp, si_t = c(15, 16), age_t = 40)),
+               "si_t must be a single value or length 4")
 })
 
 test_that("GYPSY_Sim takes per-species merchantability standards", {

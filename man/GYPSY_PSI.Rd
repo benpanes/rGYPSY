@@ -32,12 +32,13 @@ GYPSY_PSI(
 \value{
 A list with \code{aw_psi}, \code{sb_psi}, \code{sw_psi} and \code{pl_psi}, capped at
 100. As in the SAS, AW, SB and SW are 0 when they can't be computed, PL is
-\code{NA}.
+\code{NA}. Arguments given as a single value are repeated for every stand,
+with a warning.
 }
 \description{
 Percent stocking at total age 50 for each species in a stand, from the
-GYPSY percent stocking models. Takes one row per stand with species in
-columns, because SW depends on AW and PL depends on AW, SB and SW.
+GYPSY percent stocking models. Requires one row per stand with species in
+separate columns.
 }
 \examples{
 GYPSY_PSI(1, aw_ps = 60, aw_age_t = 30, aw_si_b = 16,

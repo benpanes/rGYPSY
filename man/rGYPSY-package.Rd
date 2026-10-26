@@ -6,8 +6,8 @@
 \alias{rGYPSY-package}
 \title{rGYPSY: GYPSY growth and yield functions}
 \description{
-An R and Rcpp implementation of the Alberta Growth and Yield Projection
-System (GYPSY), May 2009 functions, following the GYPSY SAS program.
+A combined R and Rcpp implementation of the Alberta Growth and Yield Projection
+System (GYPSY 2009).
 }
 \details{
 Component functions: \code{\link[=GYPSY_SI]{GYPSY_SI()}}, \code{\link[=GYPSY_SI_convert]{GYPSY_SI_convert()}}, \code{\link[=GYPSY_Age]{GYPSY_Age()}},

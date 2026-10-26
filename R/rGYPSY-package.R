@@ -1,7 +1,7 @@
 #' rGYPSY: GYPSY growth and yield functions
 #'
-#' An R and Rcpp implementation of the Alberta Growth and Yield Projection
-#' System (GYPSY), May 2009 functions, following the GYPSY SAS program.
+#' A combined R and Rcpp implementation of the Alberta Growth and Yield Projection
+#' System (GYPSY 2009).
 #'
 #' Component functions: [GYPSY_SI()], [GYPSY_SI_convert()], [GYPSY_Age()],
 #' [GYPSY_Ht()], [GYPSY_PSI()], [GYPSY_SDF()], [GYPSY_N()], [GYPSY_BAinc()],

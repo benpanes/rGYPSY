@@ -19,7 +19,7 @@ GYPSY_BAinc(
 )
 }
 \arguments{
-\item{spp}{Character vector of species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
+\item{spp}{Species group: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{bhage}{Breast height age.}
 
@@ -38,8 +38,9 @@ above breast height.}
 for species that have not reached breast height.}
 }
 \value{
-BA increment (m2/ha/yr). Length-1 arguments are recycled to the
-longest input.
+BA increment (m2/ha/yr). Arguments given as a single value are
+repeated to match the longest input, with a warning for those supplied
+rather than left at their defaults.
 }
 \description{
 Basal area increment (m2/ha/yr) from the GYPSY basal area increment models.

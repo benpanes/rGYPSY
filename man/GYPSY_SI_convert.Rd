@@ -16,7 +16,7 @@ GYPSY_SI_convert(
 )
 }
 \arguments{
-\item{spp}{Character vector of species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
+\item{spp}{Species group: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{si}{Site index (m), of the type given by \code{sitype}.}
 
@@ -34,12 +34,12 @@ SI_t), \code{5} years to breast height, \code{6} years to stump height.}
 \item{sh}{Stump height (m).}
 }
 \value{
-Numeric vector, one value per row.
+Numeric vector, one value per row. If \code{spp} or \code{si} is given as a
+single value, it is repeated to match the longest input, with a warning.
 }
 \description{
-Converts SI at breast height age 50 (SI_bh) to SI at total age 50 (SI_t)
-or the reverse, or returns years to breast or stump height for a site
-index.
+Converts SI between total age at 50 (SI_t) or breast height age at 50
+(SI_bh), or returns years to breast or stump height from a known site index.
 }
 \examples{
 spp <- c("AW", "SB", "SW", "PL")

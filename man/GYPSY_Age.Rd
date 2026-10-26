@@ -17,7 +17,7 @@ GYPSY_Age(
 )
 }
 \arguments{
-\item{spp}{Character vector of species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
+\item{spp}{Species group: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{si}{Site index (m), of the type given by \code{sitype}.}
 
@@ -39,7 +39,9 @@ age.}
 \item{sh}{Stump height (m).}
 }
 \value{
-Numeric vector of ages, one per row.
+Numeric vector of ages, one per row. If \code{spp}, \code{si} or \code{ht} is
+given as a single value, it is repeated to match the longest input, with
+a warning.
 }
 \description{
 Solves the GYPSY top height equations for the age at which a stand with a

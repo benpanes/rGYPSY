@@ -49,17 +49,18 @@ age).}
 A list with \code{aw_sdf}, \code{sb_sdf}, \code{sw_sdf}, \code{pl_sdf} (AW, SB and SW
 are 0 when not computed, PL is \code{NA}) and \code{aw_den0}, \code{sb_den0}, \code{sw_den0},
 \code{pl_den0}: density at age 0 (AW at breast height age 0, others at total
-age 0).
+age 0). Arguments given as a single value are repeated for every stand,
+with a warning.
 }
 \description{
 Solves the GYPSY spatial density functions for each species' stand density
 factor (SDF, density at age 50) from its observed density, and returns the
-initial density implied by that SDF. Takes one row per stand with species
-in columns, because SW depends on AW and PL depends on AW, SW and SB.
+initial density implied by that SDF. Requires one row per stand with species
+in separate columns.
 }
 \details{
 AW is computed only when its density is over 20 stems/ha, other species
-when density is over 0, as in the SAS.
+when density is over 0.
 }
 \examples{
 GYPSY_SDF(1, aw_age_b = 30, aw_n = 1500, aw_si_b = 16, aw_psi = 0,

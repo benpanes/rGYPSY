@@ -16,7 +16,7 @@ GYPSY_Vol(
 )
 }
 \arguments{
-\item{spp}{Character vector of species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
+\item{spp}{Species group: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{ba}{Basal area (m2/ha).}
 
@@ -35,12 +35,14 @@ GYPSY_Vol(
 \value{
 A list with \code{tvol} (total volume, m3/ha), \code{mvol} (merchantable
 volume, m3/ha, rounded to 1e-5 as in the SAS), \code{mn} (merchantable
-stems/ha) and \code{qmd} (quadratic mean diameter, cm). Length-1 arguments are
-recycled to the longest input.
+stems/ha) and \code{qmd} (quadratic mean diameter, cm). Arguments given as a
+single value are repeated to match the longest input, with a warning for
+the stand inputs (\code{spp}, \code{ba}, \code{topht}, \code{n}, \code{bhage}) but not the
+merchantability standard.
 }
 \description{
 Total volume, merchantable volume and merchantable density for one
-utilization standard, from the GYPSY volume models.
+utilization standard.
 }
 \examples{
 GYPSY_Vol(c("SW", "PL"), ba = c(20, 30), topht = c(18, 20), n = c(800, 1500),

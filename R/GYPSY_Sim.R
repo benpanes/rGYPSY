@@ -5,18 +5,31 @@
 
 .gypsy_spp <- c("AW", "SB", "SW", "PL")
 
-# Recycle length-1 inputs to n, otherwise require length n
+# Repeat single-value inputs to length n, otherwise require length n
 .recycle <- function(x, n, name){
   if(length(x) == 1) return(rep(x, n))
-  if(length(x) != n) stop(name, " must be length 1 or length ", n)
+  if(length(x) != n) stop(name, " must be a single value or length ", n)
   x
+}
+
+# Recycle a named list of arguments to length n. Gives one warning naming the
+# arguments in `warn` (variable inputs, not settings) that the caller supplied
+# as a single value and were repeated; defaults left in place are not warned about.
+.recycle_args <- function(args, n = max(lengths(args)), warn = names(args),
+                          env = parent.frame()){
+  supplied <- !vapply(warn, function(a) eval(call("missing", as.name(a)), env), logical(1))
+  rec <- warn[supplied & lengths(args[warn]) == 1]
+  if(n > 1 && length(rec) > 0)
+    warning("Single value(s) repeated to match ", n, " rows: ",
+            paste(rec, collapse = ", "), call. = FALSE)
+  Map(.recycle, args, n, names(args))
 }
 
 # Per-species value from a scalar or a vector named by species
 .per_spp <- function(x, name){
   if(length(x) == 1) return(rep(as.numeric(x), 4))
   if(is.null(names(x)) || !all(.gypsy_spp %in% toupper(names(x))))
-    stop(name, " must be length 1 or named with all of AW, SB, SW, PL")
+    stop(name, " must be a single value or named with all of AW, SB, SW, PL")
   names(x) <- toupper(names(x))
   as.numeric(x[.gypsy_spp])
 }
@@ -26,8 +39,8 @@
 #' Percent stocking index
 #'
 #' Percent stocking at total age 50 for each species in a stand, from the
-#' GYPSY percent stocking models. Takes one row per stand with species in
-#' columns, because SW depends on AW and PL depends on AW, SB and SW.
+#' GYPSY percent stocking models. Requires one row per stand with species in
+#' separate columns.
 #'
 #' @param stand Stand identifiers (used for length only).
 #' @param aw_ps,sb_ps,sw_ps,pl_ps Observed percent stocking (NA if unknown).
@@ -36,7 +49,8 @@
 #'
 #' @return A list with `aw_psi`, `sb_psi`, `sw_psi` and `pl_psi`, capped at
 #'   100. As in the SAS, AW, SB and SW are 0 when they can't be computed, PL is
-#'   `NA`.
+#'   `NA`. Arguments given as a single value are repeated for every stand,
+#'   with a warning.
 #' @seealso [GYPSY_SDF()], [GYPSY_Sim()]
 #' @export
 #' @examples
@@ -57,22 +71,28 @@ GYPSY_PSI <- function(stand,
                       pl_ps,
                       pl_age_t,
                       pl_si_b){
+  a <- lapply(.recycle_args(list(aw_ps = aw_ps, aw_age_t = aw_age_t, aw_si_b = aw_si_b,
+                                 sb_ps = sb_ps, sb_age_t = sb_age_t, sb_si_b = sb_si_b,
+                                 sw_ps = sw_ps, sw_age_t = sw_age_t, sw_si_b = sw_si_b,
+                                 pl_ps = pl_ps, pl_age_t = pl_age_t, pl_si_b = pl_si_b),
+                            n = length(stand)),
+              as.numeric)
   GYPSY_PSI_cpp(as.character(stand),
-                as.numeric(aw_ps), as.numeric(aw_age_t), as.numeric(aw_si_b),
-                as.numeric(sb_ps), as.numeric(sb_age_t), as.numeric(sb_si_b),
-                as.numeric(sw_ps), as.numeric(sw_age_t), as.numeric(sw_si_b),
-                as.numeric(pl_ps), as.numeric(pl_age_t), as.numeric(pl_si_b))
+                a$aw_ps, a$aw_age_t, a$aw_si_b,
+                a$sb_ps, a$sb_age_t, a$sb_si_b,
+                a$sw_ps, a$sw_age_t, a$sw_si_b,
+                a$pl_ps, a$pl_age_t, a$pl_si_b)
 }
 
 #' Stand density factor
 #'
 #' Solves the GYPSY spatial density functions for each species' stand density
 #' factor (SDF, density at age 50) from its observed density, and returns the
-#' initial density implied by that SDF. Takes one row per stand with species
-#' in columns, because SW depends on AW and PL depends on AW, SW and SB.
+#' initial density implied by that SDF. Requires one row per stand with species
+#' in separate columns.
 #'
 #' AW is computed only when its density is over 20 stems/ha, other species
-#' when density is over 0, as in the SAS.
+#' when density is over 0.
 #'
 #' @param stand Stand identifiers (used for length only).
 #' @param aw_age_b AW breast height age (AW density runs on breast height
@@ -88,7 +108,8 @@ GYPSY_PSI <- function(stand,
 #' @return A list with `aw_sdf`, `sb_sdf`, `sw_sdf`, `pl_sdf` (AW, SB and SW
 #'   are 0 when not computed, PL is `NA`) and `aw_den0`, `sb_den0`, `sw_den0`,
 #'   `pl_den0`: density at age 0 (AW at breast height age 0, others at total
-#'   age 0).
+#'   age 0). Arguments given as a single value are repeated for every stand,
+#'   with a warning.
 #' @seealso [GYPSY_N()], [GYPSY_PSI()]
 #' @export
 #' @examples
@@ -115,11 +136,17 @@ GYPSY_SDF <- function(stand,
                       pl_psi,
                       iter = 1000,
                       tol  = 1e-8){
+  a <- lapply(.recycle_args(list(aw_age_b = aw_age_b, aw_n = aw_n, aw_si_b = aw_si_b, aw_psi = aw_psi,
+                                 sb_age_t = sb_age_t, sb_n = sb_n, sb_si_b = sb_si_b, sb_psi = sb_psi,
+                                 sw_age_t = sw_age_t, sw_n = sw_n, sw_si_b = sw_si_b, sw_psi = sw_psi,
+                                 pl_age_t = pl_age_t, pl_n = pl_n, pl_si_b = pl_si_b, pl_psi = pl_psi),
+                            n = length(stand)),
+              as.numeric)
   GYPSY_SDF_cpp(as.character(stand),
-                as.numeric(aw_age_b), as.numeric(aw_n), as.numeric(aw_si_b), as.numeric(aw_psi),
-                as.numeric(sb_age_t), as.numeric(sb_n), as.numeric(sb_si_b), as.numeric(sb_psi),
-                as.numeric(sw_age_t), as.numeric(sw_n), as.numeric(sw_si_b), as.numeric(sw_psi),
-                as.numeric(pl_age_t), as.numeric(pl_n), as.numeric(pl_si_b), as.numeric(pl_psi),
+                a$aw_age_b, a$aw_n, a$aw_si_b, a$aw_psi,
+                a$sb_age_t, a$sb_n, a$sb_si_b, a$sb_psi,
+                a$sw_age_t, a$sw_n, a$sw_si_b, a$sw_psi,
+                a$pl_age_t, a$pl_n, a$pl_si_b, a$pl_psi,
                 as.integer(iter), as.numeric(tol))
 }
 
@@ -131,7 +158,8 @@ GYPSY_SDF <- function(stand,
 #' @param si_t Site index at total age 50 (m).
 #' @param age_t Total age.
 #'
-#' @return Top height (m).
+#' @return Top height (m). Arguments given as a single value are repeated to
+#'   match the longest input, with a warning.
 #' @seealso [GYPSY_SI()] for the inverse.
 #' @export
 #' @examples
@@ -139,16 +167,17 @@ GYPSY_SDF <- function(stand,
 GYPSY_Ht <- function(spp,
                      si_t,
                      age_t){
-  GYPSY_Ht_cpp(toupper(as.character(spp)),
-               as.numeric(si_t),
-               as.numeric(age_t))
+  a <- .recycle_args(list(spp = spp, si_t = si_t, age_t = age_t))
+  GYPSY_Ht_cpp(toupper(as.character(a$spp)),
+               as.numeric(a$si_t),
+               as.numeric(a$age_t))
 }
 
 #' Density at age
 #'
 #' Density (stems/ha) at a given age from a species' stand density factor.
 #'
-#' @param spp Character vector of species: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
+#' @param spp Species group: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
 #' @param age Breast height age for AW, total age for other species.
 #' @param sdf Stand density factor from [GYPSY_SDF()].
 #' @param si_b Site index at breast height age 50.
@@ -156,8 +185,9 @@ GYPSY_Ht <- function(spp,
 #' @param sdf_aw,sdf_sw,sdf_sb Other species' SDFs in the stand (SW uses AW;
 #'   PL uses AW, SW and SB); 0 when absent.
 #'
-#' @return Density (stems/ha); `NA` when `sdf` is not positive. Length-1
-#'   arguments are recycled to the longest input.
+#' @return Density (stems/ha); `NA` when `sdf` is not positive. Arguments
+#'   given as a single value are repeated to match the longest input, with a
+#'   warning for those supplied rather than left at their defaults.
 #' @seealso [GYPSY_SDF()]
 #' @export
 #' @examples
@@ -170,15 +200,16 @@ GYPSY_N <- function(spp,
                     sdf_aw = 0,
                     sdf_sw = 0,
                     sdf_sb = 0){
-  n <- max(lengths(list(spp, age, sdf, si_b, psi, sdf_aw, sdf_sw, sdf_sb)))
-  GYPSY_N_cpp(toupper(as.character(.recycle(spp, n, "spp"))),
-              as.numeric(.recycle(age, n, "age")),
-              as.numeric(.recycle(sdf, n, "sdf")),
-              as.numeric(.recycle(si_b, n, "si_b")),
-              as.numeric(.recycle(psi, n, "psi")),
-              as.numeric(.recycle(sdf_aw, n, "sdf_aw")),
-              as.numeric(.recycle(sdf_sw, n, "sdf_sw")),
-              as.numeric(.recycle(sdf_sb, n, "sdf_sb")))
+  a <- .recycle_args(list(spp = spp, age = age, sdf = sdf, si_b = si_b, psi = psi,
+                          sdf_aw = sdf_aw, sdf_sw = sdf_sw, sdf_sb = sdf_sb))
+  GYPSY_N_cpp(toupper(as.character(a$spp)),
+              as.numeric(a$age),
+              as.numeric(a$sdf),
+              as.numeric(a$si_b),
+              as.numeric(a$psi),
+              as.numeric(a$sdf_aw),
+              as.numeric(a$sdf_sw),
+              as.numeric(a$sdf_sb))
 }
 
 #' Annual basal area increment
@@ -186,7 +217,7 @@ GYPSY_N <- function(spp,
 #' Basal area increment (m2/ha/yr) from the GYPSY basal area increment models.
 #' [GYPSY_Sim()] adds these each year to grow BA forward.
 #'
-#' @param spp Character vector of species: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
+#' @param spp Species group: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
 #' @param bhage Breast height age.
 #' @param sc Species composition (0-1), based on density of species at or
 #'   above breast height.
@@ -197,8 +228,9 @@ GYPSY_N <- function(spp,
 #' @param sdf_aw,sdf_sb,sdf_sw,sdf_pl Competitor SDFs used by SW and PL; 0
 #'   for species that have not reached breast height.
 #'
-#' @return BA increment (m2/ha/yr). Length-1 arguments are recycled to the
-#'   longest input.
+#' @return BA increment (m2/ha/yr). Arguments given as a single value are
+#'   repeated to match the longest input, with a warning for those supplied
+#'   rather than left at their defaults.
 #' @seealso [GYPSY_Sim()]
 #' @export
 #' @examples
@@ -214,26 +246,28 @@ GYPSY_BAinc <- function(spp,
                         sdf_sb = 0,
                         sdf_sw = 0,
                         sdf_pl = 0){
-  n <- max(lengths(list(spp, bhage, sc, n0, si_b, psi, ba, sdf_aw, sdf_sb, sdf_sw, sdf_pl)))
-  GYPSY_BAinc_cpp(toupper(as.character(.recycle(spp, n, "spp"))),
-                  as.numeric(.recycle(bhage, n, "bhage")),
-                  as.numeric(.recycle(sc, n, "sc")),
-                  as.numeric(.recycle(n0, n, "n0")),
-                  as.numeric(.recycle(si_b, n, "si_b")),
-                  as.numeric(.recycle(psi, n, "psi")),
-                  as.numeric(.recycle(ba, n, "ba")),
-                  as.numeric(.recycle(sdf_aw, n, "sdf_aw")),
-                  as.numeric(.recycle(sdf_sb, n, "sdf_sb")),
-                  as.numeric(.recycle(sdf_sw, n, "sdf_sw")),
-                  as.numeric(.recycle(sdf_pl, n, "sdf_pl")))
+  a <- .recycle_args(list(spp = spp, bhage = bhage, sc = sc, n0 = n0, si_b = si_b,
+                          psi = psi, ba = ba, sdf_aw = sdf_aw, sdf_sb = sdf_sb,
+                          sdf_sw = sdf_sw, sdf_pl = sdf_pl))
+  GYPSY_BAinc_cpp(toupper(as.character(a$spp)),
+                  as.numeric(a$bhage),
+                  as.numeric(a$sc),
+                  as.numeric(a$n0),
+                  as.numeric(a$si_b),
+                  as.numeric(a$psi),
+                  as.numeric(a$ba),
+                  as.numeric(a$sdf_aw),
+                  as.numeric(a$sdf_sb),
+                  as.numeric(a$sdf_sw),
+                  as.numeric(a$sdf_pl))
 }
 
 #' Total and merchantable volume
 #'
 #' Total volume, merchantable volume and merchantable density for one
-#' utilization standard, from the GYPSY volume models.
+#' utilization standard.
 #'
-#' @param spp Character vector of species: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
+#' @param spp Species group: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
 #' @param ba Basal area (m2/ha).
 #' @param topht Top height (m). Volume needs top height over 1.3 m.
 #' @param n Density (stems/ha).
@@ -244,8 +278,10 @@ GYPSY_BAinc <- function(spp,
 #'
 #' @return A list with `tvol` (total volume, m3/ha), `mvol` (merchantable
 #'   volume, m3/ha, rounded to 1e-5 as in the SAS), `mn` (merchantable
-#'   stems/ha) and `qmd` (quadratic mean diameter, cm). Length-1 arguments are
-#'   recycled to the longest input.
+#'   stems/ha) and `qmd` (quadratic mean diameter, cm). Arguments given as a
+#'   single value are repeated to match the longest input, with a warning for
+#'   the stand inputs (`spp`, `ba`, `topht`, `n`, `bhage`) but not the
+#'   merchantability standard.
 #' @seealso [GYPSY_Sim()]
 #' @export
 #' @examples
@@ -259,27 +295,28 @@ GYPSY_Vol <- function(spp,
                       stump_ht  = 0.3, # m, <= 0.3
                       stump_dob = 15,  # cm
                       top_dib   = 10){ # cm
-  len <- max(lengths(list(spp, ba, topht, n, bhage, stump_ht, stump_dob, top_dib)))
   if(any(stump_ht > 0.3)) stop("stump_ht must be <= 0.3")
-  GYPSY_Vol_cpp(toupper(as.character(.recycle(spp, len, "spp"))),
-                as.numeric(.recycle(ba, len, "ba")),
-                as.numeric(.recycle(topht, len, "topht")),
-                as.numeric(.recycle(n, len, "n")),
-                as.numeric(.recycle(bhage, len, "bhage")),
-                as.numeric(.recycle(stump_ht, len, "stump_ht")),
-                as.numeric(.recycle(stump_dob, len, "stump_dob")),
-                as.numeric(.recycle(top_dib, len, "top_dib")))
+  a <- .recycle_args(list(spp = spp, ba = ba, topht = topht, n = n, bhage = bhage,
+                          stump_ht = stump_ht, stump_dob = stump_dob, top_dib = top_dib),
+                     warn = c("spp", "ba", "topht", "n", "bhage")) # Merch standards recycle silently
+  GYPSY_Vol_cpp(toupper(as.character(a$spp)),
+                as.numeric(a$ba),
+                as.numeric(a$topht),
+                as.numeric(a$n),
+                as.numeric(a$bhage),
+                as.numeric(a$stump_ht),
+                as.numeric(a$stump_dob),
+                as.numeric(a$top_dib))
 }
 
 # ---- Full simulation ----------------------------------------------------------
 
 #' Project stands with GYPSY
 #'
-#' Runs the full GYPSY growth and yield projection, following the 2009 GYPSY
-#' SAS program (`GYPSY_run.sas`). Input is one row per stand and species;
-#' output is one row per stand and year with species in columns.
+#' Runs the full GYPSY growth and yield projection. Input is one row per stand
+#' and species; output is one row per stand and year with species in columns.
 #'
-#' Each row needs two of `si`, `age` and `ht`. As in the SAS:
+#' Each row needs two of `si`, `age` and `ht`:
 #' * SI is computed from `ht` and `age` (total age at least 7.5 for AW and PL,
 #'   9.5 for SB and SW);
 #' * a supplied `si` overrides that SI;
@@ -293,6 +330,17 @@ GYPSY_Vol <- function(spp,
 #' The projection starts at the fractional part of the leading species' total
 #' age and runs `simlen` years. Observed basal area, when given, is used to
 #' localize the predicted basal area.
+#'
+#' Observed percent stocking (`ps`), when given, is converted to a percent
+#' stocking index (PSI, percent stocking at total age 50) with the percent
+#' stocking models. The PSI then adjusts the density and basal area increment
+#' models; without it, those models use their no-stocking form. Set
+#' `psflag = 0` to ignore `ps`.
+#'
+#' `stand_age`, `spp`, `n`, `si`, `age`, `ht`, `ps` and `ba` must be either a
+#' single value or the same length as `stand`. A single value is repeated for
+#' every row, with a warning for those supplied rather than left at their
+#' defaults.
 #'
 #' @param stand Stand identifier.
 #' @param stand_age Stand age (total), used for the `standage` output column.
@@ -341,11 +389,11 @@ GYPSY_Vol <- function(spp,
 #'   [GYPSY_SDF()], [GYPSY_N()], [GYPSY_BAinc()], [GYPSY_Vol()].
 #' @export
 #' @examples
-#' out <- GYPSY_Sim(stand = c(1, 1), stand_age = 20, spp = c("AW", "PL"),
+#' out <- GYPSY_Sim(stand = c(1, 1), stand_age = c(20, 20), spp = c("AW", "PL"),
 #'                  n = c(375, 1825), age = c(6.2, 17.5), ht = c(3.5, 5.05),
 #'                  ba = c(0.13, 3.87))
 #' out[year %in% c(10, 50, 100), .(year, totage, ba_pl, tvol_pl, mvol_all)]
-GYPSY_Sim <- function(stand,  # Outputs: one row per stand and year, species in columns (as SAS examp19)
+GYPSY_Sim <- function(stand,
                       stand_age,
                       spp,
                       n,               # Density (stems/ha)
@@ -370,14 +418,17 @@ GYPSY_Sim <- function(stand,  # Outputs: one row per stand and year, species in 
 
   # ---- Input checks -------------------------------------------------------------
   input_length <- length(stand)
-  stand_age <- .recycle(stand_age, input_length, "stand_age")
-  spp <- toupper(.recycle(spp, input_length, "spp"))
-  n   <- .recycle(n,   input_length, "n")
-  si  <- .recycle(si,  input_length, "si")
-  age <- .recycle(age, input_length, "age")
-  ht  <- .recycle(ht,  input_length, "ht")
-  ps  <- .recycle(ps,  input_length, "ps")
-  ba  <- .recycle(ba,  input_length, "ba")
+  a <- .recycle_args(list(stand_age = stand_age, spp = spp, n = n, si = si,
+                          age = age, ht = ht, ps = ps, ba = ba),
+                     n = input_length)
+  stand_age <- a$stand_age
+  spp <- toupper(a$spp)
+  n   <- a$n
+  si  <- a$si
+  age <- a$age
+  ht  <- a$ht
+  ps  <- a$ps
+  ba  <- a$ba
 
   if(!sitype %in% c("B", "T")) stop("sitype must be B or T")
   if(!agetype %in% c("T", "B", "S")) stop("agetype must be T, B, or S")
@@ -413,8 +464,8 @@ GYPSY_Sim <- function(stand,  # Outputs: one row per stand and year, species in 
   if(baflag == 0) dt1[, ba := NA_real_]
 
   # ---- SI and age (SAS data v1) ---------------------------------------------------
-  # Same order as the SAS: SI from height and age, then a supplied SI overrides it,
-  # then total age is recomputed from SI and height when both are given.
+  # SI from height and age, then a supplied SI overrides it, then total age is
+  # recomputed from SI and height when both are given.
   dt1[, `:=`(si_t = NA_real_, si_bh = NA_real_, y2bh = NA_real_)]
 
   min_age <- ifelse(dt1$spp %in% c("AW", "PL"), 7.5, 9.5)
@@ -468,9 +519,9 @@ GYPSY_Sim <- function(stand,  # Outputs: one row per stand and year, species in 
   if(length(no_age) > 0) # As in the SAS, these stands are kept and project as all NA
     warning("No total age could be determined for stand(s): ", paste(no_age, collapse = ", "))
 
-  # ---- Pivot species wider (SAS examp3) -----------------------------------------
+  # ---- Pivot species wider -----------------------------------------
   dt2 <- dt1[, .(stand_age = stand_age[1], totage_max = totage_max[1]), by = stand]
-  setorder(dt2, stand) # SAS processes stands in sorted order
+  setorder(dt2, stand)
   src_col <- c("si_t", "si_bh", "totage", "bhage", "y2bh", "n", "ps", "ba", "ht")
   for(s in .gypsy_spp){
     add_col <- paste0(tolower(s), "_", src_col)
@@ -494,7 +545,7 @@ GYPSY_Sim <- function(stand,  # Outputs: one row per stand and year, species in 
                    iter, tol)
   dt2[, names(sdf) := sdf]
 
-  # ---- Grow forward (SAS examp6 - examp19) ----------------------------------------
+  # ---- Grow forward ----------------------------------------
   res <- GYPSY_Project_cpp(as.list(dt2),
                            merch$stump_ht, merch$stump_dob, merch$top_dib,
                            as.integer(simlen), 180L, detail)

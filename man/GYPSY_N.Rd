@@ -7,7 +7,7 @@
 GYPSY_N(spp, age, sdf, si_b, psi = 0, sdf_aw = 0, sdf_sw = 0, sdf_sb = 0)
 }
 \arguments{
-\item{spp}{Character vector of species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
+\item{spp}{Species group: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{age}{Breast height age for AW, total age for other species.}
 
@@ -21,8 +21,9 @@ GYPSY_N(spp, age, sdf, si_b, psi = 0, sdf_aw = 0, sdf_sw = 0, sdf_sb = 0)
 PL uses AW, SW and SB); 0 when absent.}
 }
 \value{
-Density (stems/ha); \code{NA} when \code{sdf} is not positive. Length-1
-arguments are recycled to the longest input.
+Density (stems/ha); \code{NA} when \code{sdf} is not positive. Arguments
+given as a single value are repeated to match the longest input, with a
+warning for those supplied rather than left at their defaults.
 }
 \description{
 Density (stems/ha) at a given age from a species' stand density factor.

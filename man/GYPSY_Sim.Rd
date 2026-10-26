@@ -96,12 +96,11 @@ breast height age 0 (\verb{*_sc0}), starting BA (\verb{*_ba0}) and the observed 
 predicted BA ratio (\verb{*_rate}).
 }
 \description{
-Runs the full GYPSY growth and yield projection, following the 2009 GYPSY
-SAS program (\code{GYPSY_run.sas}). Input is one row per stand and species;
-output is one row per stand and year with species in columns.
+Runs the full GYPSY growth and yield projection. Input is one row per stand
+and species; output is one row per stand and year with species in columns.
 }
 \details{
-Each row needs two of \code{si}, \code{age} and \code{ht}. As in the SAS:
+Each row needs two of \code{si}, \code{age} and \code{ht}:
 \itemize{
 \item SI is computed from \code{ht} and \code{age} (total age at least 7.5 for AW and PL,
 9.5 for SB and SW);
@@ -117,9 +116,20 @@ project as \code{NA}, with a warning.
 The projection starts at the fractional part of the leading species' total
 age and runs \code{simlen} years. Observed basal area, when given, is used to
 localize the predicted basal area.
+
+Observed percent stocking (\code{ps}), when given, is converted to a percent
+stocking index (PSI, percent stocking at total age 50) with the percent
+stocking models. The PSI then adjusts the density and basal area increment
+models; without it, those models use their no-stocking form. Set
+\code{psflag = 0} to ignore \code{ps}.
+
+\code{stand_age}, \code{spp}, \code{n}, \code{si}, \code{age}, \code{ht}, \code{ps} and \code{ba} must be either a
+single value or the same length as \code{stand}. A single value is repeated for
+every row, with a warning for those supplied rather than left at their
+defaults.
 }
 \examples{
-out <- GYPSY_Sim(stand = c(1, 1), stand_age = 20, spp = c("AW", "PL"),
+out <- GYPSY_Sim(stand = c(1, 1), stand_age = c(20, 20), spp = c("AW", "PL"),
                  n = c(375, 1825), age = c(6.2, 17.5), ht = c(3.5, 5.05),
                  ba = c(0.13, 3.87))
 out[year \%in\% c(10, 50, 100), .(year, totage, ba_pl, tvol_pl, mvol_all)]

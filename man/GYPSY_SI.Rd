@@ -17,7 +17,7 @@ GYPSY_SI(
 )
 }
 \arguments{
-\item{spp}{Character vector of species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
+\item{spp}{Species group: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{ht}{Top height (m).}
 
@@ -40,12 +40,13 @@ age 50 (SI_bh), \code{3} years to breast height, \code{4} years to stump height.
 }
 \value{
 Numeric vector, one value per row. A warning is given for rows that
-don't converge within \code{iter} iterations.
+don't converge within \code{iter} iterations. If \code{spp}, \code{ht} or \code{age}
+is given as a single value, it is repeated to match the longest input,
+with a warning.
 }
 \description{
 Solves the GYPSY top height equations for site index (top height at age
-50) given an observed top height and age, by fixed-point iteration as in
-the 2009 GYPSY SAS program.
+50) using fixed-point iteration given an observed top height and age.
 }
 \examples{
 spp <- c("AW", "SB", "SW", "PL")

@@ -4,10 +4,9 @@
 #' Site index from top height and age
 #'
 #' Solves the GYPSY top height equations for site index (top height at age
-#' 50) given an observed top height and age, by fixed-point iteration as in
-#' the 2009 GYPSY SAS program.
+#' 50) using fixed-point iteration given an observed top height and age.
 #'
-#' @param spp Character vector of species: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
+#' @param spp Species group: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
 #' @param ht Top height (m).
 #' @param age Age in years, of the type given by `agetype`. Total age must be
 #'   at least 7.5 for AW and PL and 9.5 for SB and SW.
@@ -21,7 +20,9 @@
 #' @param sh Stump height (m).
 #'
 #' @return Numeric vector, one value per row. A warning is given for rows that
-#'   don't converge within `iter` iterations.
+#'   don't converge within `iter` iterations. If `spp`, `ht` or `age`
+#'   is given as a single value, it is repeated to match the longest input,
+#'   with a warning.
 #' @seealso [GYPSY_SI_convert()] to convert between SI_t and SI_bh,
 #'   [GYPSY_Age()] for age from SI and height.
 #' @export
@@ -32,16 +33,17 @@
 GYPSY_SI <- function(spp,
                      ht,
                      age,
-                     agetype = "T", # T = Total, B = BH, S = SH
-                     ndx = 2, # Output: 1 = SI_t, 2 = SI_BH, 3 = Y2BH, 4 = Y2SH
+                     agetype = "T",
+                     ndx = 2,
                      iter = 1000,
                      tol = 1e-8,
                      bh = 1.3,
                      sh = 0.3){
+  a <- .recycle_args(list(spp = spp, ht = ht, age = age))
   GYPSY_SI_cpp(
-    spp     = as.character(spp),
-    ht      = as.numeric(ht),
-    age     = as.numeric(age),
+    spp     = as.character(a$spp),
+    ht      = as.numeric(a$ht),
+    age     = as.numeric(a$age),
     agetype = as.character(agetype),
     ndx     = as.integer(ndx),
     iter    = as.integer(iter),
