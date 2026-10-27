@@ -58,6 +58,22 @@ test_that("single values are repeated, warning only for supplied data inputs", {
                "si_t must be a single value or length 4")
 })
 
+test_that("GYPSY_Sim reads inputs from a data table", {
+  inp  <- data.table::fread(system.file("extdata", "example_input.csv", package = "rGYPSY"))
+  base <- GYPSY_Sim(inp$stand, inp$stand_age, inp$spp, inp$n, si = inp$si,
+                    age = inp$age, ht = inp$ht, ps = inp$ps, ba = inp$ba, simlen = 50)
+  # Extra columns are ignored
+  expect_equal(GYPSY_Sim(data = cbind(inp, plot = "x"), simlen = 50), base)
+  # Arguments given directly override columns
+  expect_equal(GYPSY_Sim(data = inp, ba = rep(NA, nrow(inp)), simlen = 50),
+               GYPSY_Sim(data = inp, baflag = 0, simlen = 50))
+  # Missing optional columns warn, missing required columns stop
+  expect_warning(GYPSY_Sim(data = inp[, !c("ps", "ba")], simlen = 50),
+                 "not found in data, treated as missing: ps, ba")
+  expect_error(GYPSY_Sim(data = inp[, !"n"]), "Required column\\(s\\) not found in data: n")
+  expect_error(GYPSY_Sim(inp), "use GYPSY_Sim\\(data = ...\\)")
+})
+
 test_that("GYPSY_Sim takes per-species merchantability standards", {
   base <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 100)
   alt  <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 100,

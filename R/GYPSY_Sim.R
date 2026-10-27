@@ -368,6 +368,13 @@ GYPSY_Vol <- function(spp,
 #' @param detail If `TRUE`, also return `sc_b_*` (breast height based species
 #'   composition), `ba1_*` (BA grown from the start) and `ba2_*` (BA grown
 #'   from the observed BA).
+#' @param data Optional input table (data.frame or data.table) with one row
+#'   per stand and species. Columns named `stand`, `stand_age`, `spp`, `n`,
+#'   `si`, `age`, `ht`, `ps` and `ba` are used for those arguments; other
+#'   columns are ignored. Arguments given directly take precedence over
+#'   columns. A missing `stand`, `stand_age`, `spp` or `n` column is an
+#'   error; other missing columns are treated as missing values, with a
+#'   warning.
 #'
 #' @return A data.table with one row per stand and year:
 #' * `stand`, `year` (1 to `simlen`), `totage` (leading species total age),
@@ -393,6 +400,10 @@ GYPSY_Vol <- function(spp,
 #'                  n = c(375, 1825), age = c(6.2, 17.5), ht = c(3.5, 5.05),
 #'                  ba = c(0.13, 3.87))
 #' out[year %in% c(10, 50, 100), .(year, totage, ba_pl, tvol_pl, mvol_all)]
+#'
+#' # From an input table
+#' inp <- data.table::fread(system.file("extdata", "example_input.csv", package = "rGYPSY"))
+#' out <- GYPSY_Sim(data = inp, simlen = 150)
 GYPSY_Sim <- function(stand,
                       stand_age,
                       spp,
@@ -414,7 +425,26 @@ GYPSY_Sim <- function(stand,
                       top_dib   = 10,
                       iter    = 1000,  # Maximum iterations for hill-climbing algorithms
                       tol     = 1e-8,  # Minimum difference between iterations before extracting results from hill-climbing algorithms
-                      detail  = FALSE){ # Also return BA1 / BA2 and BH age based species composition
+                      detail  = FALSE, # Also return BA1 / BA2 and BH age based species composition
+                      data    = NULL){ # Optional input table with columns named as the arguments
+
+  # ---- Columns from data --------------------------------------------------------
+  if(!missing(stand) && is.data.frame(stand))
+    stop("To pass an input table, use GYPSY_Sim(data = ...)")
+  if(!is.null(data)){
+    if(!is.data.frame(data)) stop("data must be a data.frame or data.table")
+    cols <- c("stand", "stand_age", "spp", "n", "si", "age", "ht", "ps", "ba")
+    env  <- environment()
+    from_data <- cols[vapply(cols, function(a) eval(call("missing", as.name(a)), env), logical(1))]
+    not_found <- setdiff(from_data, names(data))
+    req_not_found <- intersect(not_found, c("stand", "stand_age", "spp", "n"))
+    if(length(req_not_found) > 0)
+      stop("Required column(s) not found in data: ", paste(req_not_found, collapse = ", "))
+    if(length(not_found) > 0)
+      warning("Column(s) not found in data, treated as missing: ",
+              paste(not_found, collapse = ", "), call. = FALSE)
+    for(a in intersect(from_data, names(data))) assign(a, data[[a]]) # Arguments given directly take precedence
+  }
 
   # ---- Input checks -------------------------------------------------------------
   input_length <- length(stand)

@@ -26,7 +26,8 @@ GYPSY_Sim(
   top_dib = 10,
   iter = 1000,
   tol = 1e-08,
-  detail = FALSE
+  detail = FALSE,
+  data = NULL
 )
 }
 \arguments{
@@ -74,6 +75,14 @@ named \code{AW}, \code{SB}, \code{SW}, \code{PL}.}
 \item{detail}{If \code{TRUE}, also return \verb{sc_b_*} (breast height based species
 composition), \verb{ba1_*} (BA grown from the start) and \verb{ba2_*} (BA grown
 from the observed BA).}
+
+\item{data}{Optional input table (data.frame or data.table) with one row
+per stand and species. Columns named \code{stand}, \code{stand_age}, \code{spp}, \code{n},
+\code{si}, \code{age}, \code{ht}, \code{ps} and \code{ba} are used for those arguments; other
+columns are ignored. Arguments given directly take precedence over
+columns. A missing \code{stand}, \code{stand_age}, \code{spp} or \code{n} column is an
+error; other missing columns are treated as missing values, with a
+warning.}
 }
 \value{
 A data.table with one row per stand and year:
@@ -133,6 +142,10 @@ out <- GYPSY_Sim(stand = c(1, 1), stand_age = c(20, 20), spp = c("AW", "PL"),
                  n = c(375, 1825), age = c(6.2, 17.5), ht = c(3.5, 5.05),
                  ba = c(0.13, 3.87))
 out[year \%in\% c(10, 50, 100), .(year, totage, ba_pl, tvol_pl, mvol_all)]
+
+# From an input table
+inp <- data.table::fread(system.file("extdata", "example_input.csv", package = "rGYPSY"))
+out <- GYPSY_Sim(data = inp, simlen = 150)
 }
 \seealso{
 The components: \code{\link[=GYPSY_SI]{GYPSY_SI()}}, \code{\link[=GYPSY_Age]{GYPSY_Age()}}, \code{\link[=GYPSY_PSI]{GYPSY_PSI()}},
