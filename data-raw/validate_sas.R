@@ -16,12 +16,20 @@
 #
 # Run from the package root. Uses roughly 4-5 GB of memory.
 # Writes the per-column report to scratch/data/sas_validation_report.csv.
+#
+# Another script can set rgypsy_dir, data_dir, report_name, run_label and
+# run_sim() before sourcing this file, to validate a different build of the
+# model with the same comparisons (e.g. webGYPSY/test/validate_sas_wasm.R).
 
 library(data.table)
 library(openxlsx)
-devtools::load_all(".")   # or library(rGYPSY) to test the installed version
 
-data_dir <- "scratch/data"
+if(!exists("rgypsy_dir"))  rgypsy_dir  <- "."
+if(!exists("data_dir"))    data_dir    <- file.path(rgypsy_dir, "scratch/data")
+if(!exists("report_name")) report_name <- "sas_validation_report.csv"
+if(!exists("run_label"))   run_label   <- "GYPSY_Sim"
+devtools::load_all(rgypsy_dir)   # or library(rGYPSY) to test the installed version
+
 rel_tol  <- 1e-6
 
 spp_l <- c("aw", "sb", "sw", "pl")
@@ -30,7 +38,7 @@ spp_u <- toupper(spp_l)
 # ---- Run GYPSY_Sim -------------------------------------------------------------
 inp <- as.data.table(read.xlsx(file.path(data_dir, "test_gypsy_bp.xlsx")))
 
-run_sim <- function(stump_dob, top_dib) {
+if(!exists("run_sim")) run_sim <- function(stump_dob, top_dib) {
   suppressWarnings(GYPSY_Sim(inp$Stand, inp$Standage, inp$Species, inp$N,
                              si = inp$SI, age = inp$totage, ht = inp$TopH,
                              ps = inp$PS, ba = inp$BA,
@@ -41,7 +49,7 @@ run_sim <- function(stump_dob, top_dib) {
 t0 <- Sys.time()
 r1 <- run_sim(13, 7)    # SAS standard 1: StumpHT1 = 0.3, StumpDOB1 = 13, TopDIB1 = 7
 r2 <- run_sim(15, 10)   # SAS standard 2: StumpHT2 = 0.3, StumpDOB2 = 15, TopDIB2 = 10
-cat(sprintf("GYPSY_Sim: %d stands, %d rows per run, %.1f s for both runs\n",
+cat(sprintf("%s: %d stands, %d rows per run, %.1f s for both runs\n", run_label,
             uniqueN(r1$stand), nrow(r1), as.numeric(Sys.time() - t0, units = "secs")))
 init <- attr(r1, "stand_init")
 setorder(r1, stand, year)
@@ -268,5 +276,5 @@ print(res[order(-max_rel)][1:10, .(level, column, how, n, max_abs, max_rel, n_fa
 if (length(unmapped)) cat("\nUnmapped SAS columns:", paste(unmapped, collapse = ", "), "\n")
 cat("\nSkipped SAS columns:\n"); print(skipped, nrows = Inf)
 
-fwrite(res, file.path(data_dir, "sas_validation_report.csv"))
-cat("\nFull report:", file.path(data_dir, "sas_validation_report.csv"), "\n")
+fwrite(res, file.path(data_dir, report_name))
+cat("\nFull report:", file.path(data_dir, report_name), "\n")
