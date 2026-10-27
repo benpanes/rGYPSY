@@ -1,22 +1,18 @@
-#include <Rcpp.h>
-#include <cmath>
-#include <string>
-#include <vector>
-#include "GYPSY_eq.h"
-using namespace Rcpp;
+#ifndef GYPSY_PROJECT_H
+#define GYPSY_PROJECT_H
+
+#include "gypsy_eq.h"
 
 // ---------------------------------------------------------------------------
 // Yearly GYPSY projection (SAS examp6 - examp19)
 //
-// Input `st` is one row per stand (sorted by stand) with columns
-//   stand_age, totage_max, and for each species prefix aw_, sb_, sw_, pl_:
-//   si_t, si_bh, totage, bhage, y2bh, ba, psi, sdf, den0
-// (missing species are NA). Rows are produced for `simlen` years starting
-// at the fractional part of the leading species' total age.
+// Input is one StandInit per stand, in stand order (missing species NaN).
+// Rows are produced for `simlen` years starting at the fractional part of
+// the leading species' total age.
 //
 // The SAS data step keeps a variable's value from the previous year when its
 // condition isn't met, and treats missing as below every number; both are
-// reproduced here (see sv() in GYPSY_eq.h).
+// reproduced here (see sv() in gypsy_eq.h).
 //
 // Steps:
 //   1. Species composition at BH age 0 of each species  (examp7 - examp11)
@@ -26,69 +22,87 @@ using namespace Rcpp;
 //   5. Volume, merchantable volume and density, MAI     (examp18 - examp19)
 // ---------------------------------------------------------------------------
 
-namespace {
+namespace gypsy {
 
-using namespace gypsy;
+// Stand-level inputs, indexed by species
+struct StandInit {
+  double stand_age, totage_max;
+  double si_t[4], si_bh[4], totage[4], bhage[4], y2bh[4], ba[4], psi[4], sdf[4], den0[4];
+};
 
-const char* PRE[4] = {"aw_", "sb_", "sw_", "pl_"};
+// Merchantability standard by species
+struct MerchStd {
+  double stump_ht[4]  = {0.3, 0.3, 0.3, 0.3};   // m, <= 0.3
+  double stump_dob[4] = {15, 15, 15, 15};        // cm
+  double top_dib[4]   = {10, 10, 10, 10};        // cm
+};
+
+struct ProjectResult {
+  Table rows;   // one row per stand and year; stand_idx is the 1-based stand
+  Table init;   // one row per stand: totage_0, *_sc0, *_ba0, *_rate
+};
 
 // Upper limits on observed/predicted BA ratio for BA localization (examp17)
 const double RATE_CAP[4] = {10.0, 5.0, 100.0, 10.0};
 
-inline double na(double x) { return std::isnan(x) ? NA_REAL : x; }
-
-} // namespace
-
-// [[Rcpp::export]]
-Rcpp::List GYPSY_Project_cpp(List          st,
-                             NumericVector stump_ht,     // per species AW, SB, SW, PL
-                             NumericVector stump_dob,
-                             NumericVector top_dib,
-                             int           simlen   = 200,
-                             int           alignlen = 180,
-                             bool          detail   = false) {
-  NumericVector standage   = st["stand_age"];
-  NumericVector totage_max = st["totage_max"];
-  int ns = standage.size();
-
-  NumericVector in_sit[4], in_sib[4], in_ta[4], in_bha[4], in_y2[4], in_ba[4], in_psi[4], in_sdf[4], in_den0[4];
-  for (int s = 0; s < 4; s++) {
-    std::string p = PRE[s];
-    in_sit[s]  = st[p + "si_t"];
-    in_sib[s]  = st[p + "si_bh"];
-    in_ta[s]   = st[p + "totage"];
-    in_bha[s]  = st[p + "bhage"];
-    in_y2[s]   = st[p + "y2bh"];
-    in_ba[s]   = st[p + "ba"];
-    in_psi[s]  = st[p + "psi"];
-    in_sdf[s]  = st[p + "sdf"];
-    in_den0[s] = st[p + "den0"];
-  }
+// check_interrupt, if given, is called once per stand (e.g. to let R stop a
+// long run)
+inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& merch,
+                             int simlen = 200, int alignlen = 180, bool detail = false,
+                             void (*check_interrupt)() = nullptr) {
+  const char* SPP[4] = {"aw", "sb", "sw", "pl"};
+  std::size_t ns = st.size();
+  std::size_t nr = ns*simlen;
 
   // ---- Output columns -------------------------------------------------------
-  int nr = ns*simlen;
-  IntegerVector o_idx(nr), o_sect(nr);
-  NumericVector o_totage(nr), o_standage(nr);
-  NumericVector o_ta[4], o_bha[4], o_ht[4], o_n[4], o_sc[4], o_ba[4], o_qmd[4],
-                o_tv[4], o_mv[4], o_mn[4], o_mait[4], o_maim[4],
-                o_scb[4], o_ba1[4], o_ba2[4];
+  ProjectResult out;
+  Table& rows = out.rows;
+  std::vector<double>& o_idx      = rows.add("stand_idx", nr);
+  std::vector<double>& o_sect     = rows.add("year", nr);
+  std::vector<double>& o_totage   = rows.add("totage", nr);
+  std::vector<double>& o_standage = rows.add("standage", nr);
+  std::vector<double> *o_ta[4], *o_bha[4], *o_ht[4], *o_n[4], *o_sc[4], *o_ba[4], *o_qmd[4],
+                      *o_tv[4], *o_mv[4], *o_mn[4], *o_mait[4], *o_maim[4],
+                      *o_scb[4], *o_ba1[4], *o_ba2[4];
   for (int s = 0; s < 4; s++) {
-    o_ta[s] = NumericVector(nr); o_bha[s] = NumericVector(nr); o_ht[s]   = NumericVector(nr);
-    o_n[s]  = NumericVector(nr); o_sc[s]  = NumericVector(nr); o_ba[s]   = NumericVector(nr);
-    o_qmd[s]= NumericVector(nr); o_tv[s]  = NumericVector(nr); o_mv[s]   = NumericVector(nr);
-    o_mn[s] = NumericVector(nr); o_mait[s]= NumericVector(nr); o_maim[s] = NumericVector(nr);
+    std::string x = SPP[s];
+    o_ta[s]   = &rows.add("totage_" + x, nr);
+    o_bha[s]  = &rows.add("bhage_"  + x, nr);
+    o_ht[s]   = &rows.add("topht_"  + x, nr);
+    o_n[s]    = &rows.add("n_"      + x, nr);
+    o_sc[s]   = &rows.add("sc_"     + x, nr);
+    o_ba[s]   = &rows.add("ba_"     + x, nr);
+    o_qmd[s]  = &rows.add("qmd_"    + x, nr);
+    o_tv[s]   = &rows.add("tvol_"   + x, nr);
+    o_mv[s]   = &rows.add("mvol_"   + x, nr);
+    o_mn[s]   = &rows.add("mn_"     + x, nr);
+    o_mait[s] = &rows.add("mai_t_"  + x, nr);
+    o_maim[s] = &rows.add("mai_m_"  + x, nr);
     if (detail) {
-      o_scb[s] = NumericVector(nr); o_ba1[s] = NumericVector(nr); o_ba2[s] = NumericVector(nr);
+      o_scb[s] = &rows.add("sc_b_" + x, nr);
+      o_ba1[s] = &rows.add("ba1_"  + x, nr);
+      o_ba2[s] = &rows.add("ba2_"  + x, nr);
     }
   }
-  NumericVector o_tv_con(nr), o_mv_con(nr), o_tv_all(nr), o_mv_all(nr),
-                o_mait_all(nr), o_maim_all(nr), o_mait_con(nr), o_maim_con(nr),
-                o_mait_dec(nr), o_maim_dec(nr);
+  std::vector<double>& o_tv_con   = rows.add("tvol_con",  nr);
+  std::vector<double>& o_mv_con   = rows.add("mvol_con",  nr);
+  std::vector<double>& o_tv_all   = rows.add("tvol_all",  nr);
+  std::vector<double>& o_mv_all   = rows.add("mvol_all",  nr);
+  std::vector<double>& o_mait_con = rows.add("mai_t_con", nr);
+  std::vector<double>& o_maim_con = rows.add("mai_m_con", nr);
+  std::vector<double>& o_mait_dec = rows.add("mai_t_dec", nr);
+  std::vector<double>& o_maim_dec = rows.add("mai_m_dec", nr);
+  std::vector<double>& o_mait_all = rows.add("mai_t_all", nr);
+  std::vector<double>& o_maim_all = rows.add("mai_m_all", nr);
 
   // Per-stand initial values
-  NumericVector i_t0(ns), i_sc0[4], i_ba0[4], i_rate[4];
+  std::vector<double>& i_t0 = out.init.add("totage_0", ns);
+  std::vector<double> *i_sc0[4], *i_ba0[4], *i_rate[4];
   for (int s = 0; s < 4; s++) {
-    i_sc0[s] = NumericVector(ns); i_ba0[s] = NumericVector(ns); i_rate[s] = NumericVector(ns);
+    std::string x = SPP[s];
+    i_sc0[s]  = &out.init.add(x + "_sc0",  ns);
+    i_ba0[s]  = &out.init.add(x + "_ba0",  ns);
+    i_rate[s] = &out.init.add(x + "_rate", ns);
   }
 
   // Yearly state for the current stand (row r, species s -> [r*4 + s])
@@ -99,16 +113,13 @@ Rcpp::List GYPSY_Project_cpp(List          st,
   // year of the previous stand (normally zeroed because BH age <= 0)
   double prev_ba1[4] = {NaN, NaN, NaN, NaN}, prev_ba2[4] = {NaN, NaN, NaN, NaN};
 
-  for (int i = 0; i < ns; i++) {
-    Rcpp::checkUserInterrupt();
+  for (std::size_t i = 0; i < ns; i++) {
+    if (check_interrupt) check_interrupt();
 
-    double sit[4], sib[4], ta[4], bha[4], y2[4], baobs[4], psi[4], sdf[4], den0[4];
-    for (int s = 0; s < 4; s++) {
-      sit[s]  = in_sit[s][i];  sib[s]  = in_sib[s][i];  ta[s]   = in_ta[s][i];
-      bha[s]  = in_bha[s][i];  y2[s]   = in_y2[s][i];   baobs[s]= in_ba[s][i];
-      psi[s]  = in_psi[s][i];  sdf[s]  = in_sdf[s][i];  den0[s] = in_den0[s][i];
-    }
-    double tmax = totage_max[i];
+    const StandInit& in = st[i];
+    const double *sit = in.si_t, *sib = in.si_bh, *ta = in.totage, *bha = in.bhage, *y2 = in.y2bh,
+                 *baobs = in.ba, *psi = in.psi, *sdf = in.sdf, *den0 = in.den0;
+    double tmax = in.totage_max;
 
     // ---- examp6: age offsets ------------------------------------------------
     double diff[4], bh0[4];
@@ -191,15 +202,18 @@ Rcpp::List GYPSY_Project_cpp(List          st,
            sc[4]   = {NaN, NaN, NaN, NaN}, scb[4]  = {NaN, NaN, NaN, NaN};
     double age1 = t0;
 
-    auto grow = [&](int s) {
-      double inc1 = BAinc(s, bha1[s], scb[s], den0[s], sib[s], psi[s], ba1[s], sdf1);
-      ba1[s] += inc1;
-      if (sv(ba1[s]) < 0 && !miss(inc1)) ba1[s] = 0.0;
+    // Pointers rather than captured arrays (GCC gives false -Warray-bounds
+    // warnings for arrays captured by reference)
+    double *pba1 = ba1, *pba2 = ba2, *pta1 = ta1, *pbha1 = bha1, *pscb = scb, *psdf1 = sdf1;
+    auto grow = [=](int s) {
+      double inc1 = BAinc(s, pbha1[s], pscb[s], den0[s], sib[s], psi[s], pba1[s], psdf1);
+      pba1[s] += inc1;
+      if (sv(pba1[s]) < 0 && !miss(inc1)) pba1[s] = 0.0;
 
-      if (sv(sas_round(ta1[s], 0.1)) >= sv(sas_round(ta[s], 0.1)) && sv(ba2[s]) > 0) {
-        double inc2 = BAinc(s, bha1[s], scb[s], den0[s], sib[s], psi[s], ba2[s], sdf1);
-        ba2[s] += inc2;
-        if (sv(ba2[s]) < 0 && !miss(inc2)) ba2[s] = 0.0;
+      if (sv(sas_round(pta1[s], 0.1)) >= sv(sas_round(ta[s], 0.1)) && sv(pba2[s]) > 0) {
+        double inc2 = BAinc(s, pbha1[s], pscb[s], den0[s], sib[s], psi[s], pba2[s], psdf1);
+        pba2[s] += inc2;
+        if (sv(pba2[s]) < 0 && !miss(inc2)) pba2[s] = 0.0;
       }
     };
 
@@ -291,12 +305,12 @@ Rcpp::List GYPSY_Project_cpp(List          st,
 
     // ---- Output rows -------------------------------------------------------
     for (int k = 0; k < simlen; k++) {
-      int r = i*simlen + k;
+      std::size_t r = i*simlen + k;
       double t1 = T1[k];
-      o_idx[r] = i + 1;
-      o_sect[r] = k + 1;
-      o_totage[r] = t1;
-      o_standage[r] = t1 + (standage[i] - tmax);
+      o_idx[r]      = static_cast<double>(i + 1);
+      o_sect[r]     = k + 1;
+      o_totage[r]   = t1;
+      o_standage[r] = t1 + (in.stand_age - tmax);
 
       double tv[4], mv[4], mait[4], maim[4];
       for (int s = 0; s < 4; s++) {
@@ -322,7 +336,8 @@ Rcpp::List GYPSY_Project_cpp(List          st,
         if (sv(hts) > 1.3 && !miss(bl)) {
           tvs = TotVol(s, bl, hts);
           if (sv(qmd) > 0) {
-            MerchResult m = Merch(s, tvs, qmd, hts, bha1s, dens, stump_ht[s], stump_dob[s], top_dib[s]);
+            MerchResult m = Merch(s, tvs, qmd, hts, bha1s, dens,
+                                  merch.stump_ht[s], merch.stump_dob[s], merch.top_dib[s]);
             mvs = sas_round(m.mv, 0.00001);
             mns = m.mn;
             if (sv(ta1s) > 0) { maits = tvs/ta1s; maims = mvs/ta1s; }
@@ -336,12 +351,12 @@ Rcpp::List GYPSY_Project_cpp(List          st,
         if (dens == 0) dens = NaN;
         if (sv(bha1s) < 0) bl = NaN;
 
-        o_ta[s][r]   = na(ta1s);  o_bha[s][r] = na(bha1s); o_ht[s][r]   = na(hts);
-        o_n[s][r]    = na(dens);  o_sc[s][r]  = na(scs);   o_ba[s][r]   = na(bl);
-        o_qmd[s][r]  = na(qmd);   o_tv[s][r]  = tv[s];     o_mv[s][r]   = mv[s];
-        o_mn[s][r]   = na(mns);   o_mait[s][r]= mait[s];   o_maim[s][r] = maim[s];
+        (*o_ta[s])[r]  = ta1s;  (*o_bha[s])[r] = bha1s; (*o_ht[s])[r]   = hts;
+        (*o_n[s])[r]   = dens;  (*o_sc[s])[r]  = scs;   (*o_ba[s])[r]   = bl;
+        (*o_qmd[s])[r] = qmd;   (*o_tv[s])[r]  = tv[s]; (*o_mv[s])[r]   = mv[s];
+        (*o_mn[s])[r]  = mns;   (*o_mait[s])[r]= mait[s]; (*o_maim[s])[r] = maim[s];
         if (detail) {
-          o_scb[s][r] = na(SCB[j]); o_ba1[s][r] = na(BA1[j]); o_ba2[s][r] = na(BA2[j]);
+          (*o_scb[s])[r] = SCB[j]; (*o_ba1[s])[r] = BA1[j]; (*o_ba2[s])[r] = BA2[j];
         }
       }
 
@@ -349,61 +364,23 @@ Rcpp::List GYPSY_Project_cpp(List          st,
       o_tv_con[r] = tvc;           o_mv_con[r] = mvc;
       o_tv_all[r] = tvc + tv[AW];  o_mv_all[r] = mvc + mv[AW];
       bool pos = t1 > 0;
-      o_mait_all[r] = pos ? (tvc + tv[AW])/t1 : NA_REAL;
-      o_maim_all[r] = pos ? (mvc + mv[AW])/t1 : NA_REAL;
-      o_mait_con[r] = pos ? tvc/t1    : NA_REAL;
-      o_maim_con[r] = pos ? mvc/t1    : NA_REAL;
-      o_mait_dec[r] = pos ? tv[AW]/t1 : NA_REAL;
-      o_maim_dec[r] = pos ? mv[AW]/t1 : NA_REAL;
+      o_mait_all[r] = pos ? (tvc + tv[AW])/t1 : NaN;
+      o_maim_all[r] = pos ? (mvc + mv[AW])/t1 : NaN;
+      o_mait_con[r] = pos ? tvc/t1    : NaN;
+      o_maim_con[r] = pos ? mvc/t1    : NaN;
+      o_mait_dec[r] = pos ? tv[AW]/t1 : NaN;
+      o_maim_dec[r] = pos ? mv[AW]/t1 : NaN;
     }
 
     i_t0[i] = t0;
     for (int s = 0; s < 4; s++) {
-      i_sc0[s][i] = sc0[s]; i_ba0[s][i] = na(ba0[s]); i_rate[s][i] = na(rate[s]);
+      (*i_sc0[s])[i] = sc0[s]; (*i_ba0[s])[i] = ba0[s]; (*i_rate[s])[i] = rate[s];
     }
   }
 
-  // ---- Assemble -------------------------------------------------------------
-  const char* SPP[4] = {"aw", "sb", "sw", "pl"};
-  List rows;
-  rows["stand_idx"] = o_idx;
-  rows["year"]      = o_sect;
-  rows["totage"]    = o_totage;
-  rows["standage"]  = o_standage;
-  for (int s = 0; s < 4; s++) {
-    std::string x = SPP[s];
-    rows["totage_" + x] = o_ta[s];
-    rows["bhage_"  + x] = o_bha[s];
-    rows["topht_"  + x] = o_ht[s];
-    rows["n_"      + x] = o_n[s];
-    rows["sc_"     + x] = o_sc[s];
-    rows["ba_"     + x] = o_ba[s];
-    rows["qmd_"    + x] = o_qmd[s];
-    rows["tvol_"   + x] = o_tv[s];
-    rows["mvol_"   + x] = o_mv[s];
-    rows["mn_"     + x] = o_mn[s];
-    rows["mai_t_"  + x] = o_mait[s];
-    rows["mai_m_"  + x] = o_maim[s];
-    if (detail) {
-      rows["sc_b_" + x] = o_scb[s];
-      rows["ba1_"  + x] = o_ba1[s];
-      rows["ba2_"  + x] = o_ba2[s];
-    }
-  }
-  rows["tvol_con"]  = o_tv_con;   rows["mvol_con"]  = o_mv_con;
-  rows["tvol_all"]  = o_tv_all;   rows["mvol_all"]  = o_mv_all;
-  rows["mai_t_con"] = o_mait_con; rows["mai_m_con"] = o_maim_con;
-  rows["mai_t_dec"] = o_mait_dec; rows["mai_m_dec"] = o_maim_dec;
-  rows["mai_t_all"] = o_mait_all; rows["mai_m_all"] = o_maim_all;
-
-  List init;
-  init["totage_0"] = i_t0;
-  for (int s = 0; s < 4; s++) {
-    std::string x = SPP[s];
-    init[x + "_sc0"]  = i_sc0[s];
-    init[x + "_ba0"]  = i_ba0[s];
-    init[x + "_rate"] = i_rate[s];
-  }
-
-  return List::create(_["rows"] = rows, _["init"] = init);
+  return out;
 }
+
+} // namespace gypsy
+
+#endif

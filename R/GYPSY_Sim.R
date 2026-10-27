@@ -446,146 +446,52 @@ GYPSY_Sim <- function(stand,
     for(a in intersect(from_data, names(data))) assign(a, data[[a]]) # Arguments given directly take precedence
   }
 
-  # ---- Input checks -------------------------------------------------------------
+  # ---- Inputs to one value per row ----------------------------------------------
   input_length <- length(stand)
   a <- .recycle_args(list(stand_age = stand_age, spp = spp, n = n, si = si,
                           age = age, ht = ht, ps = ps, ba = ba),
                      n = input_length)
-  stand_age <- a$stand_age
-  spp <- toupper(a$spp)
-  n   <- a$n
-  si  <- a$si
-  age <- a$age
-  ht  <- a$ht
-  ps  <- a$ps
-  ba  <- a$ba
-
-  if(!sitype %in% c("B", "T")) stop("sitype must be B or T")
-  if(!agetype %in% c("T", "B", "S")) stop("agetype must be T, B, or S")
-
-  bad_spp <- which(!spp %in% .gypsy_spp)
-  if(length(bad_spp) > 0)
-    stop("Species must be AW, SB, SW, or PL. Check row(s): ", paste(bad_spp, collapse = ", "))
-
-  miss_input <- which((is.na(si) + is.na(age) + is.na(ht)) > 1) # Check for missing input data
-  if(length(miss_input) > 0)
-    stop("Simulation requires 2 of SI, Age, and Top Height. Check row(s): ", paste(miss_input, collapse = ", "))
 
   merch <- list(stump_ht  = .per_spp(stump_ht,  "stump_ht"),
                 stump_dob = .per_spp(stump_dob, "stump_dob"),
                 top_dib   = .per_spp(top_dib,   "top_dib"))
-  if(any(merch$stump_ht > 0.3)) stop("stump_ht must be <= 0.3")
 
-  dt1 <- data.table("stand"     = stand,     # Combine inputs into single table
-                    "stand_age" = as.numeric(stand_age),
-                    "spp"       = spp,
-                    "n"         = as.numeric(n),
-                    "si"        = as.numeric(si),
-                    "age"       = as.numeric(age),
-                    "ht"        = as.numeric(ht),
-                    "ps"        = suppressWarnings(as.numeric(ps)), # "." from SAS-style inputs becomes NA
-                    "ba"        = as.numeric(ba))
+  # Stands are passed to C++ as codes in sorted order (radix sort orders
+  # character IDs in the C locale, as data.table does)
+  ids  <- sort(unique(stand), method = "radix")
+  code <- match(stand, ids) - 1L
 
-  dup <- dt1[, .I[.N > 1], by = .(stand, spp)]$V1 # Find duplicate stand species groups
-  if(length(dup) > 0)
-    stop("Duplicate stand species groups in row(s): ", paste(dup, collapse = ", "))
-
-  if(psflag == 0) dt1[, ps := NA_real_]
-  if(baflag == 0) dt1[, ba := NA_real_]
-
-  # ---- SI and age (SAS data v1) ---------------------------------------------------
-  # SI from height and age, then a supplied SI overrides it, then total age is
-  # recomputed from SI and height when both are given.
-  dt1[, `:=`(si_t = NA_real_, si_bh = NA_real_, y2bh = NA_real_)]
-
-  min_age <- ifelse(dt1$spp %in% c("AW", "PL"), 7.5, 9.5)
-  i1 <- dt1[, which(!is.na(age) & !is.na(ht) & ht > 0 & age >= min_age)]
-  if(length(i1) > 0){
-    dt1[i1, `:=`(si_t  = GYPSY_SI(spp, ht, age, agetype, ndx = 1, iter, tol, bh, sh),
-                 si_bh = GYPSY_SI(spp, ht, age, agetype, ndx = 2, iter, tol, bh, sh),
-                 y2bh  = GYPSY_SI(spp, ht, age, agetype, ndx = 3, iter, tol, bh, sh))]
-  }
-
-  i2 <- dt1[, which(!is.na(si) & si > 0)]
-  if(length(i2) > 0){
-    if(sitype == "B"){
-      dt1[i2, `:=`(si_bh = si,
-                   si_t  = GYPSY_SI_convert(spp, si, sitype = "B", ndx = 4, iter, tol, bh, sh))]
-    } else {
-      dt1[i2, `:=`(si_t  = si,
-                   si_bh = GYPSY_SI_convert(spp, si, sitype = "T", ndx = 4, iter, tol, bh, sh))]
-    }
-    dt1[i2, y2bh := GYPSY_SI_convert(spp, si_t, sitype = "T", ndx = 5, iter, tol, bh, sh)]
-  }
-
-  # Total age from the supplied age
-  if(agetype == "T"){
-    dt1[, totage := age]
-  } else if(agetype == "B"){
-    dt1[, totage := age + y2bh]
-  } else {
-    dt1[, totage := NA_real_]
-    i_s <- dt1[, which(!is.na(si_t))]
-    if(length(i_s) > 0)
-      dt1[i_s, totage := age + GYPSY_SI_convert(spp, si_t, sitype = "T", ndx = 6, iter, tol, bh, sh)]
-  }
-
-  i3 <- dt1[, which(!is.na(si) & si > 0 & !is.na(ht) & ht > 0)]
-  if(length(i3) > 0)
-    dt1[i3, totage := GYPSY_Age(spp, si_t, ht, sitype = "T", ndx = 1, iter, tol, bh, sh)]
-
-  dt1[, bhage := NA_real_]
-  dt1[!is.na(y2bh) & y2bh > 0, bhage := totage - y2bh]
-
-  no_si <- dt1[, which(is.na(si_t))]
-  if(length(no_si) > 0)
-    warning("No SI for row(s) ", paste(no_si, collapse = ", "),
-            " (age below 7.5 for AW/PL or 9.5 for SB/SW); these species are not grown but still count toward the leading age.")
-
-  # Leading (maximum) total age per stand
-  dt1[, totage_max := suppressWarnings(max(totage, na.rm = TRUE)), by = stand]
-  dt1[!is.finite(totage_max), totage_max := NA_real_]
-  no_age <- dt1[is.na(totage_max), unique(stand)]
-  if(length(no_age) > 0) # As in the SAS, these stands are kept and project as all NA
-    warning("No total age could be determined for stand(s): ", paste(no_age, collapse = ", "))
-
-  # ---- Pivot species wider -----------------------------------------
-  dt2 <- dt1[, .(stand_age = stand_age[1], totage_max = totage_max[1]), by = stand]
-  setorder(dt2, stand)
-  src_col <- c("si_t", "si_bh", "totage", "bhage", "y2bh", "n", "ps", "ba", "ht")
-  for(s in .gypsy_spp){
-    add_col <- paste0(tolower(s), "_", src_col)
-    dt2[, (add_col) := NA_real_]
-    dt2[dt1[spp == s], on = "stand", (add_col) := mget(paste0("i.", src_col))]
-  }
-
-  # ---- Stand-level parameters (PSI, SDF, initial density) ------------------------
-  dt2[, c("aw_psi", "sb_psi", "sw_psi", "pl_psi") :=
-        GYPSY_PSI(stand,
-                  aw_ps, aw_totage, aw_si_bh,
-                  sb_ps, sb_totage, sb_si_bh,
-                  sw_ps, sw_totage, sw_si_bh,
-                  pl_ps, pl_totage, pl_si_bh)]
-
-  sdf <- GYPSY_SDF(dt2$stand,
-                   dt2$aw_bhage,  dt2$aw_n, dt2$aw_si_bh, dt2$aw_psi,
-                   dt2$sb_totage, dt2$sb_n, dt2$sb_si_bh, dt2$sb_psi,
-                   dt2$sw_totage, dt2$sw_n, dt2$sw_si_bh, dt2$sw_psi,
-                   dt2$pl_totage, dt2$pl_n, dt2$pl_si_bh, dt2$pl_psi,
-                   iter, tol)
-  dt2[, names(sdf) := sdf]
-
-  # ---- Grow forward ----------------------------------------
-  res <- GYPSY_Project_cpp(as.list(dt2),
-                           merch$stump_ht, merch$stump_dob, merch$top_dib,
-                           as.integer(simlen), 180L, detail)
+  # ---- Run the model (src/core/gypsy_sim.h) ---------------------------------------
+  res <- GYPSY_Sim_cpp(code, as.character(ids),
+                       stand_age = as.numeric(a$stand_age),
+                       spp       = toupper(as.character(a$spp)),
+                       n         = as.numeric(a$n),
+                       si        = as.numeric(a$si),
+                       age       = as.numeric(a$age),
+                       ht        = as.numeric(a$ht),
+                       ps        = suppressWarnings(as.numeric(a$ps)), # "." from SAS-style inputs becomes NA
+                       ba        = as.numeric(a$ba),
+                       sitype    = as.character(sitype),
+                       agetype   = as.character(agetype),
+                       simlen    = as.integer(simlen),
+                       psflag    = psflag != 0,
+                       baflag    = baflag != 0,
+                       bh        = as.numeric(bh),
+                       sh        = as.numeric(sh),
+                       stump_ht  = merch$stump_ht,
+                       stump_dob = merch$stump_dob,
+                       top_dib   = merch$top_dib,
+                       iter      = as.integer(iter),
+                       tol       = as.numeric(tol),
+                       detail    = isTRUE(detail))
+  for(w in res$warnings) warning(w, call. = FALSE)
 
   out <- as.data.table(res$rows)
-  out[, stand := dt2$stand[stand_idx]]
+  out[, stand := ids[stand_idx]]
   out[, stand_idx := NULL]
   setcolorder(out, "stand")
 
-  init <- cbind(dt2, as.data.table(res$init))
+  init <- as.data.table(c(list(stand = ids), res$init))
   setattr(out, "stand_init", init) # Stand-level inputs and parameters (SI, PSI, SDF, SC0, BA0, ...)
   out[]
 }

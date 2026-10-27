@@ -1,15 +1,18 @@
-#ifndef RGYPSY_GYPSY_EQ_H
-#define RGYPSY_GYPSY_EQ_H
+#ifndef GYPSY_EQ_H
+#define GYPSY_EQ_H
 
 #include <cmath>
+#include <deque>
 #include <limits>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // GYPSY component equations (MAY 21, 2009 functions, GYPSY_run.sas)
 //
-// Shared by the exported functions in GYPSY_Sim.cpp, GYPSY_BA.cpp,
-// GYPSY_Vol.cpp and GYPSY_Project.cpp. No Rcpp here, plain C++.
+// Part of the GYPSY core (src/core): plain C++ with no R or Rcpp
+// dependencies, so it can also be compiled outside R (e.g. to WebAssembly).
 //
 // Missing values are NaN. SAS treats a missing value as smaller than any
 // number, so conditions copied from the SAS go through sv(), which maps
@@ -50,6 +53,31 @@ inline int spp_index(const std::string& s) {
   if (s == "SW") return SW;
   if (s == "PL") return PL;
   return -1;
+}
+
+// ---- Core types -------------------------------------------------------------
+
+// Input errors are thrown; warnings are collected and returned to the caller
+struct Error : std::runtime_error { using std::runtime_error::runtime_error; };
+using Messages = std::vector<std::string>;
+
+// Ordered named columns (missing = NaN); a deque keeps column references
+// valid while columns are added
+struct Table {
+  std::vector<std::string>         names;
+  std::deque<std::vector<double>>  cols;
+  std::vector<double>& add(const std::string& name, std::size_t n, double fill = NaN) {
+    names.push_back(name);
+    cols.emplace_back(n, fill);
+    return cols.back();
+  }
+};
+
+// 1-based row numbers as "1, 2, 3"
+inline std::string join_rows(const std::vector<int>& rows) {
+  std::string out;
+  for (std::size_t i = 0; i < rows.size(); i++) out += (i ? ", " : "") + std::to_string(rows[i] + 1);
+  return out;
 }
 
 // ---- Top height -----------------------------------------------------------
