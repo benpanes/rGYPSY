@@ -175,3 +175,18 @@ out_1310 <- GYPSY_Sim(inp$stand, inp$stand_age, inp$spp, inp$n,
                       stump_dob = c(AW = 15, SB = 13, SW = 15, PL = 13),
                       top_dib   = 10)
 ```
+
+## Acknowledgements
+
+GYPSY (Growth and Yield Projection System) was developed by Dr. Shongming
+Huang and colleagues with the Government of Alberta. The model is described
+in:
+
+Huang, S., Meng, S.X. and Yang, Y. 2009. A Growth and Yield Projection System
+(GYPSY) for Natural and Post-harvest Stands in Alberta. Alberta Sustainable
+Resource Development, Technical Report Pub. No. T/216. Edmonton, Alberta.
+
+Official information about GYPSY is on the Government of Alberta's
+[Growth and Yield Projection System page](https://www.alberta.ca/growth-and-yield-projection-system).
+rGYPSY is an independent implementation of the published GYPSY functions and
+is not produced or endorsed by the Government of Alberta.
