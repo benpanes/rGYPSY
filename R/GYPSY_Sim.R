@@ -427,14 +427,20 @@ GYPSY_Sim <- function(stand,
                       tol     = 1e-8,  # Minimum difference between iterations before extracting results from hill-climbing algorithms
                       detail  = FALSE, # Also return BA1 / BA2 and BH age based species composition
                       data    = NULL){ # Optional input table with columns named as the arguments
+  .run_sim(environment(), "GYPSY_Sim")
+}
 
+# Runs GYPSY_Sim or, with ti = TRUE, GYPSY_Sim_TI. env is the calling
+# function's environment, holding its arguments.
+.run_sim <- function(env, fun, ti = FALSE){
   # ---- Columns from data --------------------------------------------------------
-  if(!missing(stand) && is.data.frame(stand))
-    stop("To pass an input table, use GYPSY_Sim(data = ...)")
+  if(!eval(quote(missing(stand)), env) && is.data.frame(env$stand))
+    stop("To pass an input table, use ", fun, "(data = ...)")
+  data <- env$data
   if(!is.null(data)){
     if(!is.data.frame(data)) stop("data must be a data.frame or data.table")
     cols <- c("stand", "stand_age", "spp", "n", "si", "age", "ht", "ps", "ba")
-    env  <- environment()
+    if(ti) cols <- c(cols, "gw", "sel_age")
     from_data <- cols[vapply(cols, function(a) eval(call("missing", as.name(a)), env), logical(1))]
     not_found <- setdiff(from_data, names(data))
     req_not_found <- intersect(not_found, c("stand", "stand_age", "spp", "n"))
@@ -443,18 +449,18 @@ GYPSY_Sim <- function(stand,
     if(length(not_found) > 0)
       warning("Column(s) not found in data, treated as missing: ",
               paste(not_found, collapse = ", "), call. = FALSE)
-    for(a in intersect(from_data, names(data))) assign(a, data[[a]]) # Arguments given directly take precedence
+    for(a in intersect(from_data, names(data))) assign(a, data[[a]], envir = env) # Arguments given directly take precedence
   }
 
   # ---- Inputs to one value per row ----------------------------------------------
+  rows <- c("stand_age", "spp", "n", "si", "age", "ht", "ps", "ba", if(ti) c("gw", "sel_age"))
+  stand <- get("stand", envir = env)
   input_length <- length(stand)
-  a <- .recycle_args(list(stand_age = stand_age, spp = spp, n = n, si = si,
-                          age = age, ht = ht, ps = ps, ba = ba),
-                     n = input_length)
+  a <- .recycle_args(mget(rows, envir = env), n = input_length, env = env)
 
-  merch <- list(stump_ht  = .per_spp(stump_ht,  "stump_ht"),
-                stump_dob = .per_spp(stump_dob, "stump_dob"),
-                top_dib   = .per_spp(top_dib,   "top_dib"))
+  merch <- list(stump_ht  = .per_spp(env$stump_ht,  "stump_ht"),
+                stump_dob = .per_spp(env$stump_dob, "stump_dob"),
+                top_dib   = .per_spp(env$top_dib,   "top_dib"))
 
   # Stands are passed to C++ as codes in sorted order (radix sort orders
   # character IDs in the C locale, as data.table does)
@@ -471,19 +477,22 @@ GYPSY_Sim <- function(stand,
                        ht        = as.numeric(a$ht),
                        ps        = suppressWarnings(as.numeric(a$ps)), # "." from SAS-style inputs becomes NA
                        ba        = as.numeric(a$ba),
-                       sitype    = as.character(sitype),
-                       agetype   = as.character(agetype),
-                       simlen    = as.integer(simlen),
-                       psflag    = psflag != 0,
-                       baflag    = baflag != 0,
-                       bh        = as.numeric(bh),
-                       sh        = as.numeric(sh),
+                       sitype    = as.character(env$sitype),
+                       agetype   = as.character(env$agetype),
+                       simlen    = as.integer(env$simlen),
+                       psflag    = env$psflag != 0,
+                       baflag    = env$baflag != 0,
+                       bh        = as.numeric(env$bh),
+                       sh        = as.numeric(env$sh),
                        stump_ht  = merch$stump_ht,
                        stump_dob = merch$stump_dob,
                        top_dib   = merch$top_dib,
-                       iter      = as.integer(iter),
-                       tol       = as.numeric(tol),
-                       detail    = isTRUE(detail))
+                       iter      = as.integer(env$iter),
+                       tol       = as.numeric(env$tol),
+                       detail    = isTRUE(env$detail),
+                       ti        = ti,
+                       gw        = if(ti) as.numeric(a$gw) else numeric(),
+                       sel_age   = if(ti) as.numeric(a$sel_age) else numeric())
   for(w in res$warnings) warning(w, call. = FALSE)
 
   out <- as.data.table(res$rows)

@@ -11,6 +11,7 @@ WebAssembly with Emscripten. The R package's bindings are in `../rgypsy.cpp`.
 | `gypsy_stand.h`        | Percent stocking index and stand density factor for one stand   |
 | `gypsy_project.h`      | Yearly projection                                               |
 | `gypsy_sim.h`          | Full run: input checks, SI and age, PSI and SDF, projection     |
+| `gypsy_ti.h`           | Tree improvement: SI adjusted for genetic worth (Luo and Thomas 2021) |
 | `gypsy_components.h`   | Vector versions of each component (used by the R functions)     |
 
 ## Conventions
@@ -45,6 +46,19 @@ opt.simlen = 150;
 gypsy::SimResult res = gypsy::Sim(in, opt);
 // res.rows: one row per stand and year; res.init: one row per stand;
 // res.warnings: messages
+```
+
+For stands of improved seedlots, `gypsy::SimTI` runs the same simulation
+with each row's total age SI raised for genetic worth (`gw`, % for height at
+selection age `sel_age`), using the age-age correlation of Luo and Thomas
+(2021). Only SW and PL rows can have a genetic worth; a missing SW or PL
+genetic worth is treated as 0, with a warning:
+
+```cpp
+gypsy::TIInput ti;
+ti.gw      = {0, gypsy::NaN, 10};            // PL unimproved; AW has no genetic worth
+ti.sel_age = {gypsy::NaN, gypsy::NaN, 15};
+gypsy::SimResult res = gypsy::SimTI(in, ti, opt);
 ```
 
 Output rows are in stand code order, so give codes in the order you want the

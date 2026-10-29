@@ -6,6 +6,7 @@
 #include "gypsy_si.h"
 #include "gypsy_stand.h"
 #include "gypsy_project.h"
+#include "gypsy_ti.h"
 
 // ---------------------------------------------------------------------------
 // Full GYPSY run (GYPSY_run.sas): one row per stand and species in, one row
@@ -18,6 +19,10 @@
 //   3. Leading (maximum) total age per stand, species widened to columns
 //   4. Percent stocking index, stand density factor and initial density
 //   5. Yearly projection (gypsy_project.h)
+//
+// SimTI runs the same steps with each row's SI_t raised for tree
+// improvement (gypsy_ti.h) after step 2. Total age is kept; SI_bh, years to
+// breast height and breast height age follow the new SI_t.
 //
 // Stands are identified by a code 0 .. n_stands - 1 per row; the output is
 // in code order. stand_label gives each code's name for messages. Missing
@@ -48,13 +53,21 @@ struct SimOptions {
   void (*check_interrupt)() = nullptr;
 };
 
+// Tree improvement inputs for SimTI, one value per row (gw 0: no
+// adjustment; NaN is treated as 0 for SW and PL, with a warning)
+struct TIInput {
+  std::vector<double> gw;        // genetic worth for height at the selection age (%)
+  std::vector<double> sel_age;   // selection age
+};
+
 struct SimResult {
   Table    rows;       // one row per stand and year; stand_idx = code + 1
   Table    init;       // one row per stand (stand_age, totage_max, widened inputs, PSI, SDF, ...)
   Messages warnings;
 };
 
-inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
+// Sim and SimTI; ti is null for Sim
+inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput* ti) {
   const char* SPP[4] = {"aw", "sb", "sw", "pl"};
   std::size_t nr = in.spp.size();
   std::size_t ns = in.stand_label.size();
@@ -84,6 +97,13 @@ inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
     if (miss(in.si[i]) + miss(in.age[i]) + miss(in.ht[i]) > 1) miss_input.push_back(static_cast<int>(i));
   if (!miss_input.empty())
     throw Error("Simulation requires 2 of SI, Age, and Top Height. Check row(s): " + join_rows(miss_input));
+
+  std::vector<double> gw_in;   // SimTI: genetic worth, missing SW and PL values as 0
+  if (ti) {
+    for (std::size_t m : {ti->gw.size(), ti->sel_age.size()})
+      if (m != nr) throw Error("All inputs must have one value per row");
+    gw_in = check_ti(spp, ti->gw, ti->sel_age, warn);
+  }
 
   for (int s = 0; s < 4; s++)
     if (opt.merch.stump_ht[s] > 0.3) throw Error("stump_ht must be <= 0.3");
@@ -167,6 +187,19 @@ inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
     if (sv(in.si[i]) > 0 && sv(in.ht[i]) > 0)
       totage[i] = age_from(i, si_t[i], in.ht[i], 'T').tage;
 
+  // ---- 2b. Tree improvement (SimTI) --------------------------------------------------
+  std::vector<double> si_t_base = si_t, si_bh_base = si_bh, aacor(nr, NaN);
+  if (ti) {
+    for (std::size_t i = 0; i < nr; i++) {
+      double gw = gw_in[i];
+      if (miss(si_t[i]) || miss(gw) || gw == 0) continue;
+      aacor[i] = AgeAgeCor(spp[i], ti->sel_age[i]);
+      si_t[i]  = SI_TI(spp[i], si_t[i], gw, ti->sel_age[i]);
+      AgeResult r = age_from(i, si_t[i], NaN, 'T');
+      si_bh[i] = r.si_bh; y2bh[i] = r.y2bh;
+    }
+  }
+
   std::vector<int> no_si;
   for (std::size_t i = 0; i < nr; i++) {
     if (sv(y2bh[i]) > 0) bhage[i] = totage[i] - y2bh[i];
@@ -180,7 +213,12 @@ inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
   std::vector<StandInit> st(ns);
   std::vector<bool> seen(ns, false);
   std::vector<double> wide_n[4], wide_ps[4], wide_ht[4];
+  std::vector<double> wide_sit0[4], wide_sib0[4], wide_gw[4], wide_sel[4], wide_r[4];   // SimTI
   for (int s = 0; s < 4; s++) { wide_n[s].assign(ns, NaN); wide_ps[s].assign(ns, NaN); wide_ht[s].assign(ns, NaN); }
+  if (ti)
+    for (int s = 0; s < 4; s++)
+      for (std::vector<double>* w : {&wide_sit0[s], &wide_sib0[s], &wide_gw[s], &wide_sel[s], &wide_r[s]})
+        w->assign(ns, NaN);
   for (StandInit& x : st) {
     x.stand_age = NaN; x.totage_max = NaN;
     for (int s = 0; s < 4; s++) {
@@ -196,6 +234,10 @@ inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
     x.si_t[s] = si_t[i]; x.si_bh[s] = si_bh[i]; x.totage[s] = totage[i];
     x.bhage[s] = bhage[i]; x.y2bh[s] = y2bh[i]; x.ba[s] = ba[i];
     wide_n[s][c] = in.n[i]; wide_ps[s][c] = ps[i]; wide_ht[s][c] = in.ht[i];
+    if (ti) {
+      wide_sit0[s][c] = si_t_base[i]; wide_sib0[s][c] = si_bh_base[i];
+      wide_gw[s][c]   = gw_in[i];    wide_sel[s][c]  = ti->sel_age[i]; wide_r[s][c] = aacor[i];
+    }
   }
   for (std::size_t c = 0; c < ns; c++)
     if (!seen[c]) throw Error("Stand " + in.stand_label[c] + " has no rows");
@@ -255,6 +297,16 @@ inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
       c_ps[c]  = wide_ps[s][c];  c_ba[c]  = st[c].ba[s];    c_ht[c] = wide_ht[s][c];
     }
   }
+  if (ti) {   // SI before the adjustment, and the adjustment's inputs
+    for (int s = 0; s < 4; s++) {
+      std::string x = SPP[s];
+      init.add(x + "_si_t_base",  ns) = wide_sit0[s];
+      init.add(x + "_si_bh_base", ns) = wide_sib0[s];
+      init.add(x + "_gw",         ns) = wide_gw[s];
+      init.add(x + "_sel_age",    ns) = wide_sel[s];
+      init.add(x + "_aacor",      ns) = wide_r[s];
+    }
+  }
   for (int s = 0; s < 4; s++) {
     std::vector<double>& col = init.add(std::string(SPP[s]) + "_psi", ns);
     for (std::size_t c = 0; c < ns; c++) col[c] = st[c].psi[s];
@@ -272,6 +324,10 @@ inline SimResult Sim(const SimInput& in, const SimOptions& opt) {
 
   return out;
 }
+
+inline SimResult Sim(const SimInput& in, const SimOptions& opt) { return SimRun(in, opt, nullptr); }
+
+inline SimResult SimTI(const SimInput& in, const TIInput& ti, const SimOptions& opt) { return SimRun(in, opt, &ti); }
 
 } // namespace gypsy
 

@@ -1,6 +1,7 @@
 #include <Rcpp.h>
 #include "core/gypsy_components.h"
 #include "core/gypsy_sim.h"
+#include "core/gypsy_ti.h"
 using namespace Rcpp;
 
 // ---------------------------------------------------------------------------
@@ -75,6 +76,15 @@ NumericVector GYPSY_Age_cpp(CharacterVector spp,
                                          : std::vector<double>(spp.size(), gypsy::NaN);
   gypsy::Messages warn;
   std::vector<double> res = gypsy::Age(chr(spp), num(si), ht, sitype, ndx, iter, tol, bh, sh, warn);
+  emit(warn);
+  return to_r(res);
+}
+
+// [[Rcpp::export]]
+NumericVector GYPSY_SI_TI_cpp(CharacterVector spp, NumericVector si_t, NumericVector gw,
+                              NumericVector sel_age) {
+  gypsy::Messages warn;
+  std::vector<double> res = gypsy::SI_TI(chr(spp), num(si_t), num(gw), num(sel_age), warn);
   emit(warn);
   return to_r(res);
 }
@@ -155,6 +165,7 @@ Rcpp::List GYPSY_Vol_cpp(CharacterVector spp, NumericVector ba, NumericVector to
 // ---- Full simulation ---------------------------------------------------------------
 // stand: 0-based stand code per row; stand_label: name of each code.
 // stump_ht, stump_dob, top_dib: per species AW, SB, SW, PL.
+// ti: run SimTI with gw and sel_age (ignored otherwise).
 // Returns rows (one per stand and year), init (one per stand) and warnings.
 
 // [[Rcpp::export]]
@@ -180,7 +191,10 @@ Rcpp::List GYPSY_Sim_cpp(IntegerVector   stand,
                          NumericVector   top_dib,
                          int             iter,
                          double          tol,
-                         bool            detail) {
+                         bool            detail,
+                         bool            ti      = false,
+                         NumericVector   gw      = NumericVector(),
+                         NumericVector   sel_age = NumericVector()) {
   gypsy::SimInput in;
   in.stand       = as<std::vector<int>>(stand);
   in.stand_label = chr(stand_label);
@@ -200,7 +214,14 @@ Rcpp::List GYPSY_Sim_cpp(IntegerVector   stand,
   opt.iter = iter; opt.tol = tol; opt.detail = detail;
   opt.check_interrupt = interrupt;
 
-  gypsy::SimResult res = gypsy::Sim(in, opt);
+  gypsy::SimResult res;
+  if (ti) {
+    gypsy::TIInput t;
+    t.gw = num(gw); t.sel_age = num(sel_age);
+    res = gypsy::SimTI(in, t, opt);
+  } else {
+    res = gypsy::Sim(in, opt);
+  }
   return List::create(_["rows"]     = to_r(res.rows, {"stand_idx", "year"}),
                       _["init"]     = to_r(res.init),
                       _["warnings"] = wrap(res.warnings));

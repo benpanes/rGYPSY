@@ -176,6 +176,27 @@ out_1310 <- GYPSY_Sim(inp$stand, inp$stand_age, inp$spp, inp$n,
                       top_dib   = 10)
 ```
 
+## Tree improvement
+
+`GYPSY_Sim_TI()` projects stands of improved white spruce and lodgepole pine
+seedlots. It takes the same inputs as `GYPSY_Sim()` plus, per row, the
+seedlot's genetic worth for height (`gw`, %) and the selection age it was
+estimated at (`sel_age`). Each SW and PL row's total age site index is raised
+with the age-age correlation between the selection age and age 50 (Luo and
+Thomas 2021, section 2.4), and the stand is projected from the improved SI:
+
+```r
+imp <- GYPSY_Sim_TI(1, 15, "PL", n = 2000, si = 18, age = 15, simlen = 100,
+                    gw = 10, sel_age = 15)
+```
+
+`GYPSY_SI_TI()` gives the improved SI on its own.
+
+Luo, D. and Thomas, B.R. 2021. An analysis of age-age correlations in white
+spruce and lodgepole pine and how it applies to the growth and yield
+projection system (GYPSY) in Alberta. Forest Ecology and Management 482:
+118865. https://doi.org/10.1016/j.foreco.2020.118865
+
 ## Acknowledgements
 
 GYPSY (Growth and Yield Projection System) was developed by Dr. Shongming

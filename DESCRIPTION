@@ -10,6 +10,8 @@ Authors@R: c(
     )
   )
 Description: An implementation of Growth and Yield Projection System functions in R.
+    Includes site index adjustment for tree improvement following Luo and
+    Thomas (2021) <doi:10.1016/j.foreco.2020.118865>.
 License: GPL-3
 Encoding: UTF-8
 Imports: Rcpp, data.table
