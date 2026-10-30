@@ -207,6 +207,13 @@ Huang, S., Meng, S.X. and Yang, Y. 2009. A Growth and Yield Projection System
 (GYPSY) for Natural and Post-harvest Stands in Alberta. Alberta Sustainable
 Resource Development, Technical Report Pub. No. T/216. Edmonton, Alberta.
 
+Merchantable density follows:
+
+Huang, S., Meng, S.X. and Yang, Y. December 2009. A Growth and Yield Projection
+System (GYPSY) for Natural and Post-harvest Stands in Alberta: Predicting
+Merchantable Density. Alberta Sustainable Resource Development. Edmonton,
+Alberta.
+
 Official information about GYPSY is on the Government of Alberta's
 [Growth and Yield Projection System page](https://www.alberta.ca/growth-and-yield-projection-system).
 rGYPSY is an independent implementation of the published GYPSY functions and
