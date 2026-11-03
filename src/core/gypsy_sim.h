@@ -1,6 +1,7 @@
 #ifndef GYPSY_SIM_H
 #define GYPSY_SIM_H
 
+#include <algorithm>
 #include <map>
 #include "gypsy_eq.h"
 #include "gypsy_si.h"
@@ -24,6 +25,10 @@
 // improvement (gypsy_ti.h) after step 2. Total age is kept; SI_bh, years to
 // breast height and breast height age follow the new SI_t.
 //
+// SI, age and density types are set for the run in SimOptions, or per row in
+// SimInput (sitype, agetype, ntype), so species in a stand can use different
+// types.
+//
 // Stands are identified by a code 0 .. n_stands - 1 per row; the output is
 // in code order. stand_label gives each code's name for messages. Missing
 // values are NaN.
@@ -37,11 +42,14 @@ struct SimInput {
   std::vector<double>      stand_age;
   std::vector<std::string> spp;           // "AW", "SB", "SW" or "PL"
   std::vector<double>      n, si, age, ht, ps, ba;
+  // Per row types (each empty, or one per row; empty uses SimOptions)
+  std::vector<std::string> sitype, agetype, ntype;
 };
 
 struct SimOptions {
   std::string sitype  = "B";   // SI type: B breast height age 50, T total age 50
   std::string agetype = "T";   // age type: T total, B breast height, S stump height
+  std::string ntype   = "N";   // density type: N at the given age, N0 initial (total age 0; AW at BH age 0)
   int    simlen = 200;
   bool   psflag = true;        // false ignores ps
   bool   baflag = true;        // false ignores ba
@@ -81,9 +89,22 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
   for (int c : in.stand)
     if (c < 0 || static_cast<std::size_t>(c) >= ns) throw Error("Stand codes must be 0 to the number of stands - 1");
 
-  if (opt.sitype != "B" && opt.sitype != "T") throw Error("sitype must be B or T");
-  if (opt.agetype != "T" && opt.agetype != "B" && opt.agetype != "S") throw Error("agetype must be T, B, or S");
-  char at = opt.agetype[0];
+  // Type per row: the row's own, else the run's
+  auto types = [&](const std::vector<std::string>& v, const std::string& def, const std::string& name,
+                   const std::vector<std::string>& ok, const std::string& oks) {
+    if (!v.empty() && v.size() != nr) throw Error(name + " must be one value or one per row");
+    std::vector<std::string> out(nr);
+    std::vector<int> bad;
+    for (std::size_t i = 0; i < nr; i++) {
+      out[i] = v.empty() ? def : v[i];
+      if (std::find(ok.begin(), ok.end(), out[i]) == ok.end()) bad.push_back(static_cast<int>(i));
+    }
+    if (!bad.empty()) throw Error(name + " must be " + oks + ". Check row(s): " + join_rows(bad));
+    return out;
+  };
+  const std::vector<std::string> sty = types(in.sitype,  opt.sitype,  "sitype",  {"B", "T"},      "B or T");
+  const std::vector<std::string> aty = types(in.agetype, opt.agetype, "agetype", {"T", "B", "S"}, "T, B, or S");
+  const std::vector<std::string> nty = types(in.ntype,   opt.ntype,   "ntype",   {"N", "N0"},     "N or N0");
 
   std::vector<int> spp(nr), bad_spp, miss_input;
   for (std::size_t i = 0; i < nr; i++) {
@@ -146,9 +167,9 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
       if (miss(in.age[i]) || miss(in.ht[i]) || !(in.ht[i] > 0) || !(in.age[i] >= min_age)) continue;
       rows.push_back(i);
       std::string row = "Row " + std::to_string(i + 1);
-      if (at == 'T' && in.ht[i] < 0.1)      errors.push_back(row + ": ht must be >= 0.1.");
-      if (at == 'S' && in.ht[i] < opt.sh)   errors.push_back(row + ": ht must be >= stump height.");
-      if (at == 'B' && in.ht[i] < opt.bh)   errors.push_back(row + ": ht must be >= breast height.");
+      if (aty[i] == "T" && in.ht[i] < 0.1)      errors.push_back(row + ": ht must be >= 0.1.");
+      if (aty[i] == "S" && in.ht[i] < opt.sh)   errors.push_back(row + ": ht must be >= stump height.");
+      if (aty[i] == "B" && in.ht[i] < opt.bh)   errors.push_back(row + ": ht must be >= breast height.");
     }
     if (!errors.empty()) {
       std::string msg;
@@ -156,7 +177,7 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
       throw Error(msg);
     }
     for (std::size_t i : rows) {
-      SIResult r = SolveSI(spp[i], in.ht[i], in.age[i], at, opt.iter, opt.tol, opt.bh, opt.sh);
+      SIResult r = SolveSI(spp[i], in.ht[i], in.age[i], aty[i][0], opt.iter, opt.tol, opt.bh, opt.sh);
       if (!r.converged) warn.push_back("Row " + std::to_string(i + 1) + ": SI did not converge.");
       si_t[i] = r.si_t; si_bh[i] = r.si_bh; y2bh[i] = r.y2bh;
     }
@@ -165,7 +186,7 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
   // A supplied SI overrides it
   for (std::size_t i = 0; i < nr; i++) {
     if (!(sv(in.si[i]) > 0)) continue;
-    if (opt.sitype == "B") {
+    if (sty[i] == "B") {
       si_bh[i] = in.si[i];
       si_t[i]  = age_from(i, in.si[i], NaN, 'B').si_t;
     } else {
@@ -177,8 +198,8 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
 
   // Total age from the supplied age
   for (std::size_t i = 0; i < nr; i++) {
-    if      (at == 'T') totage[i] = in.age[i];
-    else if (at == 'B') totage[i] = in.age[i] + y2bh[i];
+    if      (aty[i] == "T") totage[i] = in.age[i];
+    else if (aty[i] == "B") totage[i] = in.age[i] + y2bh[i];
     else if (!miss(si_t[i])) totage[i] = in.age[i] + age_from(i, si_t[i], NaN, 'T').y2sh;
   }
 
@@ -213,8 +234,9 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
   std::vector<StandInit> st(ns);
   std::vector<bool> seen(ns, false);
   std::vector<double> wide_n[4], wide_ps[4], wide_ht[4];
+  std::vector<char>   wide_n0[4];   // density given as N0
   std::vector<double> wide_sit0[4], wide_sib0[4], wide_gw[4], wide_sel[4], wide_r[4];   // SimTI
-  for (int s = 0; s < 4; s++) { wide_n[s].assign(ns, NaN); wide_ps[s].assign(ns, NaN); wide_ht[s].assign(ns, NaN); }
+  for (int s = 0; s < 4; s++) { wide_n[s].assign(ns, NaN); wide_ps[s].assign(ns, NaN); wide_ht[s].assign(ns, NaN); wide_n0[s].assign(ns, 0); }
   if (ti)
     for (int s = 0; s < 4; s++)
       for (std::vector<double>* w : {&wide_sit0[s], &wide_sib0[s], &wide_gw[s], &wide_sel[s], &wide_r[s]})
@@ -233,7 +255,7 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
     if (!miss(totage[i]) && (miss(x.totage_max) || totage[i] > x.totage_max)) x.totage_max = totage[i];
     x.si_t[s] = si_t[i]; x.si_bh[s] = si_bh[i]; x.totage[s] = totage[i];
     x.bhage[s] = bhage[i]; x.y2bh[s] = y2bh[i]; x.ba[s] = ba[i];
-    wide_n[s][c] = in.n[i]; wide_ps[s][c] = ps[i]; wide_ht[s][c] = in.ht[i];
+    wide_n[s][c] = in.n[i]; wide_ps[s][c] = ps[i]; wide_ht[s][c] = in.ht[i]; wide_n0[s][c] = nty[i] == "N0";
     if (ti) {
       wide_sit0[s][c] = si_t_base[i]; wide_sib0[s][c] = si_bh_base[i];
       wide_gw[s][c]   = gw_in[i];    wide_sel[s][c]  = ti->sel_age[i]; wide_r[s][c] = aacor[i];
@@ -264,8 +286,9 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
     StandPSI(p, x.totage, x.si_bh, x.psi);
 
     for (int s = 0; s < 4; s++) sdf_age[s] = (s == AW) ? x.bhage[AW] : x.totage[s];   // AW density runs on BH age
-    bool conv[4];
-    StandSDF(sdf_age, n, x.si_bh, x.psi, opt.iter, opt.tol, x.sdf, x.den0, conv);
+    bool conv[4], at0[4];
+    for (int s = 0; s < 4; s++) at0[s] = wide_n0[s][c];
+    StandSDF(sdf_age, n, x.si_bh, x.psi, opt.iter, opt.tol, x.sdf, x.den0, conv, at0);
     for (int s = 0; s < 4; s++)
       if (!conv[s]) warn.push_back("Stand " + in.stand_label[c] + ": SDF did not converge.");
   }

@@ -16,6 +16,7 @@ GYPSY_Sim(
   ba = NA_real_,
   sitype = "B",
   agetype = "T",
+  ntype = "N",
   simlen = 200,
   psflag = 1,
   baflag = 1,
@@ -50,9 +51,16 @@ GYPSY_Sim(
 
 \item{ba}{Basal area (m2/ha, \code{NA} if unknown).}
 
-\item{sitype}{\code{"B"} SI at breast height age 50, or \code{"T"} at total age 50.}
+\item{sitype}{\code{"B"} SI at breast height age 50, or \code{"T"} at total age 50.
+One value for all rows, or one per row so species can use different
+types.}
 
-\item{agetype}{\code{"T"} total, \code{"B"} breast height or \code{"S"} stump height age.}
+\item{agetype}{\code{"T"} total, \code{"B"} breast height or \code{"S"} stump height age.
+One value for all rows, or one per row.}
+
+\item{ntype}{\code{"N"} if \code{n} is the density at the given age, or \code{"N0"} if it
+is the initial density (at total age 0; AW at breast height age 0), as
+GYPSY's \verb{*_den0}. One value for all rows, or one per row.}
 
 \item{simlen}{Number of years to project.}
 

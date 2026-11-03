@@ -185,8 +185,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // GYPSY_Sim_cpp
-Rcpp::List GYPSY_Sim_cpp(IntegerVector stand, CharacterVector stand_label, NumericVector stand_age, CharacterVector spp, NumericVector n, NumericVector si, NumericVector age, NumericVector ht, NumericVector ps, NumericVector ba, std::string sitype, std::string agetype, int simlen, bool psflag, bool baflag, double bh, double sh, NumericVector stump_ht, NumericVector stump_dob, NumericVector top_dib, int iter, double tol, bool detail, bool ti, NumericVector gw, NumericVector sel_age);
-RcppExport SEXP _rGYPSY_GYPSY_Sim_cpp(SEXP standSEXP, SEXP stand_labelSEXP, SEXP stand_ageSEXP, SEXP sppSEXP, SEXP nSEXP, SEXP siSEXP, SEXP ageSEXP, SEXP htSEXP, SEXP psSEXP, SEXP baSEXP, SEXP sitypeSEXP, SEXP agetypeSEXP, SEXP simlenSEXP, SEXP psflagSEXP, SEXP baflagSEXP, SEXP bhSEXP, SEXP shSEXP, SEXP stump_htSEXP, SEXP stump_dobSEXP, SEXP top_dibSEXP, SEXP iterSEXP, SEXP tolSEXP, SEXP detailSEXP, SEXP tiSEXP, SEXP gwSEXP, SEXP sel_ageSEXP) {
+Rcpp::List GYPSY_Sim_cpp(IntegerVector stand, CharacterVector stand_label, NumericVector stand_age, CharacterVector spp, NumericVector n, NumericVector si, NumericVector age, NumericVector ht, NumericVector ps, NumericVector ba, CharacterVector sitype, CharacterVector agetype, int simlen, bool psflag, bool baflag, double bh, double sh, NumericVector stump_ht, NumericVector stump_dob, NumericVector top_dib, int iter, double tol, bool detail, CharacterVector ntype, bool ti, NumericVector gw, NumericVector sel_age);
+RcppExport SEXP _rGYPSY_GYPSY_Sim_cpp(SEXP standSEXP, SEXP stand_labelSEXP, SEXP stand_ageSEXP, SEXP sppSEXP, SEXP nSEXP, SEXP siSEXP, SEXP ageSEXP, SEXP htSEXP, SEXP psSEXP, SEXP baSEXP, SEXP sitypeSEXP, SEXP agetypeSEXP, SEXP simlenSEXP, SEXP psflagSEXP, SEXP baflagSEXP, SEXP bhSEXP, SEXP shSEXP, SEXP stump_htSEXP, SEXP stump_dobSEXP, SEXP top_dibSEXP, SEXP iterSEXP, SEXP tolSEXP, SEXP detailSEXP, SEXP ntypeSEXP, SEXP tiSEXP, SEXP gwSEXP, SEXP sel_ageSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -200,8 +200,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type ht(htSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type ps(psSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type ba(baSEXP);
-    Rcpp::traits::input_parameter< std::string >::type sitype(sitypeSEXP);
-    Rcpp::traits::input_parameter< std::string >::type agetype(agetypeSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type sitype(sitypeSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type agetype(agetypeSEXP);
     Rcpp::traits::input_parameter< int >::type simlen(simlenSEXP);
     Rcpp::traits::input_parameter< bool >::type psflag(psflagSEXP);
     Rcpp::traits::input_parameter< bool >::type baflag(baflagSEXP);
@@ -213,10 +213,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type iter(iterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< bool >::type detail(detailSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type ntype(ntypeSEXP);
     Rcpp::traits::input_parameter< bool >::type ti(tiSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type sel_age(sel_ageSEXP);
-    rcpp_result_gen = Rcpp::wrap(GYPSY_Sim_cpp(stand, stand_label, stand_age, spp, n, si, age, ht, ps, ba, sitype, agetype, simlen, psflag, baflag, bh, sh, stump_ht, stump_dob, top_dib, iter, tol, detail, ti, gw, sel_age));
+    rcpp_result_gen = Rcpp::wrap(GYPSY_Sim_cpp(stand, stand_label, stand_age, spp, n, si, age, ht, ps, ba, sitype, agetype, simlen, psflag, baflag, bh, sh, stump_ht, stump_dob, top_dib, iter, tol, detail, ntype, ti, gw, sel_age));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -231,7 +232,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rGYPSY_GYPSY_N_cpp", (DL_FUNC) &_rGYPSY_GYPSY_N_cpp, 8},
     {"_rGYPSY_GYPSY_BAinc_cpp", (DL_FUNC) &_rGYPSY_GYPSY_BAinc_cpp, 11},
     {"_rGYPSY_GYPSY_Vol_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Vol_cpp, 8},
-    {"_rGYPSY_GYPSY_Sim_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Sim_cpp, 26},
+    {"_rGYPSY_GYPSY_Sim_cpp", (DL_FUNC) &_rGYPSY_GYPSY_Sim_cpp, 27},
     {NULL, NULL, 0}
 };
 

@@ -25,6 +25,13 @@
   Map(.recycle, args, n, names(args))
 }
 
+# SI, age or density type: one value for the run, or one per row
+.types <- function(x, n, name){
+  x <- toupper(as.character(x))
+  if(length(x) != 1 && length(x) != n) stop(name, " must be a single value or length ", n)
+  x
+}
+
 # Per-species value from a scalar or a vector named by species
 .per_spp <- function(x, name){
   if(length(x) == 1) return(rep(as.numeric(x), 4))
@@ -353,7 +360,13 @@ GYPSY_Vol <- function(spp,
 #'   `"."` are treated as missing).
 #' @param ba Basal area (m2/ha, `NA` if unknown).
 #' @param sitype `"B"` SI at breast height age 50, or `"T"` at total age 50.
+#'   One value for all rows, or one per row so species can use different
+#'   types.
 #' @param agetype `"T"` total, `"B"` breast height or `"S"` stump height age.
+#'   One value for all rows, or one per row.
+#' @param ntype `"N"` if `n` is the density at the given age, or `"N0"` if it
+#'   is the initial density (at total age 0; AW at breast height age 0), as
+#'   GYPSY's `*_den0`. One value for all rows, or one per row.
 #' @param simlen Number of years to project.
 #' @param psflag Set to 0 to ignore `ps` (turns off the percent stocking
 #'   models).
@@ -415,6 +428,7 @@ GYPSY_Sim <- function(stand,
                       ba      = NA_real_,
                       sitype  = "B",   # T for Total or B for Breast Height
                       agetype = "T",   # T = Total, B = BH, S = SH
+                      ntype   = "N",   # N = density at the given age, N0 = initial density
                       simlen  = 200,   # Simulation length
                       psflag  = 1,     # Percent stocking override, set to 0 turn off PS model
                       baflag  = 1,     # BA localization override, set to 0 turn off BA localization
@@ -477,8 +491,8 @@ GYPSY_Sim <- function(stand,
                        ht        = as.numeric(a$ht),
                        ps        = suppressWarnings(as.numeric(a$ps)), # "." from SAS-style inputs becomes NA
                        ba        = as.numeric(a$ba),
-                       sitype    = as.character(env$sitype),
-                       agetype   = as.character(env$agetype),
+                       sitype    = .types(env$sitype,  input_length, "sitype"),
+                       agetype   = .types(env$agetype, input_length, "agetype"),
                        simlen    = as.integer(env$simlen),
                        psflag    = env$psflag != 0,
                        baflag    = env$baflag != 0,
@@ -490,6 +504,7 @@ GYPSY_Sim <- function(stand,
                        iter      = as.integer(env$iter),
                        tol       = as.numeric(env$tol),
                        detail    = isTRUE(env$detail),
+                       ntype     = .types(env$ntype, input_length, "ntype"),
                        ti        = ti,
                        gw        = if(ti) as.numeric(a$gw) else numeric(),
                        sel_age   = if(ti) as.numeric(a$sel_age) else numeric())

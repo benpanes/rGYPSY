@@ -58,12 +58,15 @@ separate argument:
 | `stand`     | Stand identifier. Each species can appear only once per stand.              |
 | `stand_age` | Stand age. Copied to the `standage` output column; not used in the model.  |
 | `spp`       | Species group: `AW` (aspen), `SB` (black spruce), `SW` (white spruce) or `PL` (lodgepole pine). |
-| `n`         | Density (stems/ha).                                                         |
+| `n`         | Density (stems/ha) at the given age, or the initial density (N0; at total age 0, AW at breast height age 0) with `ntype = "N0"`. |
 | `si`        | Site index (m). Breast height age 50 by default (`sitype = "B"`), or total age 50 with `sitype = "T"`. |
 | `age`       | Age (years). Total age by default (`agetype = "T"`), or breast height (`"B"`) or stump height (`"S"`) age. |
 | `ht`        | Top height (m).                                                             |
 | `ps`        | Percent stocking (optional, `NA` if unknown).                               |
 | `ba`        | Basal area (m²/ha, optional, `NA` if unknown).                              |
+
+`sitype`, `agetype` and `ntype` can be one value for every row, or one per
+row, so species in a stand can be given different types.
 
 Each row needs two out of `si`, `age` and `ht` in order to calculate the third:
 

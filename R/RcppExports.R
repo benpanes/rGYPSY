@@ -37,7 +37,7 @@ GYPSY_Vol_cpp <- function(spp, ba, topht, n, bhage, stump_ht, stump_dob, top_dib
     .Call(`_rGYPSY_GYPSY_Vol_cpp`, spp, ba, topht, n, bhage, stump_ht, stump_dob, top_dib)
 }
 
-GYPSY_Sim_cpp <- function(stand, stand_label, stand_age, spp, n, si, age, ht, ps, ba, sitype, agetype, simlen, psflag, baflag, bh, sh, stump_ht, stump_dob, top_dib, iter, tol, detail, ti = FALSE, gw = numeric(), sel_age = numeric()) {
-    .Call(`_rGYPSY_GYPSY_Sim_cpp`, stand, stand_label, stand_age, spp, n, si, age, ht, ps, ba, sitype, agetype, simlen, psflag, baflag, bh, sh, stump_ht, stump_dob, top_dib, iter, tol, detail, ti, gw, sel_age)
+GYPSY_Sim_cpp <- function(stand, stand_label, stand_age, spp, n, si, age, ht, ps, ba, sitype, agetype, simlen, psflag, baflag, bh, sh, stump_ht, stump_dob, top_dib, iter, tol, detail, ntype = as.character( c("N")), ti = FALSE, gw = numeric(), sel_age = numeric()) {
+    .Call(`_rGYPSY_GYPSY_Sim_cpp`, stand, stand_label, stand_age, spp, n, si, age, ht, ps, ba, sitype, agetype, simlen, psflag, baflag, bh, sh, stump_ht, stump_dob, top_dib, iter, tol, detail, ntype, ti, gw, sel_age)
 }
 

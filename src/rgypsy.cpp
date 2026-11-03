@@ -165,6 +165,7 @@ Rcpp::List GYPSY_Vol_cpp(CharacterVector spp, NumericVector ba, NumericVector to
 // ---- Full simulation ---------------------------------------------------------------
 // stand: 0-based stand code per row; stand_label: name of each code.
 // stump_ht, stump_dob, top_dib: per species AW, SB, SW, PL.
+// sitype, agetype, ntype: one value for the run, or one per row.
 // ti: run SimTI with gw and sel_age (ignored otherwise).
 // Returns rows (one per stand and year), init (one per stand) and warnings.
 
@@ -179,8 +180,8 @@ Rcpp::List GYPSY_Sim_cpp(IntegerVector   stand,
                          NumericVector   ht,
                          NumericVector   ps,
                          NumericVector   ba,
-                         std::string     sitype,
-                         std::string     agetype,
+                         CharacterVector sitype,
+                         CharacterVector agetype,
                          int             simlen,
                          bool            psflag,
                          bool            baflag,
@@ -192,6 +193,7 @@ Rcpp::List GYPSY_Sim_cpp(IntegerVector   stand,
                          int             iter,
                          double          tol,
                          bool            detail,
+                         CharacterVector ntype   = CharacterVector::create("N"),
                          bool            ti      = false,
                          NumericVector   gw      = NumericVector(),
                          NumericVector   sel_age = NumericVector()) {
@@ -204,7 +206,14 @@ Rcpp::List GYPSY_Sim_cpp(IntegerVector   stand,
   in.ht = num(ht); in.ps = num(ps); in.ba  = num(ba);
 
   gypsy::SimOptions opt;
-  opt.sitype = sitype; opt.agetype = agetype; opt.simlen = simlen;
+  // One value sets the run's type; more are per row
+  auto type = [&](const CharacterVector& v, std::string& run, std::vector<std::string>& rows) {
+    if (v.size() == 1) run = as<std::string>(v[0]); else rows = chr(v);
+  };
+  type(sitype, opt.sitype, in.sitype);
+  type(agetype, opt.agetype, in.agetype);
+  type(ntype, opt.ntype, in.ntype);
+  opt.simlen = simlen;
   opt.psflag = psflag; opt.baflag = baflag; opt.bh = bh; opt.sh = sh;
   for (int s = 0; s < 4; s++) {
     opt.merch.stump_ht[s]  = stump_ht[s];
