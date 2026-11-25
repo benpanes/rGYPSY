@@ -41,7 +41,8 @@ GYPSY_Sim_TI(
 \item{spp}{Species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{n}{Density (stems/ha). Values of 30 stems/ha or fewer are projected
-with a warning: they are outside the range GYPSY is meant for.}
+with a warning: they are outside the range GYPSY is meant for. Aspen at
+20 stems/ha or fewer isn't grown (warning).}
 
 \item{si}{Site index (m), of the type given by \code{sitype}.}
 

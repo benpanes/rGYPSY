@@ -39,7 +39,8 @@ GYPSY_Sim(
 \item{spp}{Species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
 \item{n}{Density (stems/ha). Values of 30 stems/ha or fewer are projected
-with a warning: they are outside the range GYPSY is meant for.}
+with a warning: they are outside the range GYPSY is meant for. Aspen at
+20 stems/ha or fewer isn't grown (warning).}
 
 \item{si}{Site index (m), of the type given by \code{sitype}.}
 
@@ -132,6 +133,11 @@ the supplied \code{age} is not used.
 Species without an SI are not grown, but their age still counts toward the
 stand's leading (oldest) age. Stands with no usable age are kept and
 project as \code{NA}, with a warning.
+
+Total ages below GYPSY's minimum (7.5 years for AW and PL, 9.5 for SB and
+SW), which the GYPSY DLL rejects, give a warning when an SI is supplied:
+from total age 0 (AW: breast height age -1) they are projected anyway,
+below that the species isn't grown.
 
 The projection starts at the fractional part of the leading species' total
 age and runs \code{simlen} years. Observed basal area, when given, is used to

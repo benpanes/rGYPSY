@@ -335,6 +335,11 @@ GYPSY_Vol <- function(spp,
 #' stand's leading (oldest) age. Stands with no usable age are kept and
 #' project as `NA`, with a warning.
 #'
+#' Total ages below GYPSY's minimum (7.5 years for AW and PL, 9.5 for SB and
+#' SW), which the GYPSY DLL rejects, give a warning when an SI is supplied:
+#' from total age 0 (AW: breast height age -1) they are projected anyway,
+#' below that the species isn't grown.
+#'
 #' The projection starts at the fractional part of the leading species' total
 #' age and runs `simlen` years. Observed basal area, when given, is used to
 #' localize the predicted basal area.
@@ -354,7 +359,8 @@ GYPSY_Vol <- function(spp,
 #' @param stand_age Stand age (total), used for the `standage` output column.
 #' @param spp Species: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
 #' @param n Density (stems/ha). Values of 30 stems/ha or fewer are projected
-#'   with a warning: they are outside the range GYPSY is meant for.
+#'   with a warning: they are outside the range GYPSY is meant for. Aspen at
+#'   20 stems/ha or fewer isn't grown (warning).
 #' @param si Site index (m), of the type given by `sitype`.
 #' @param age Age, of the type given by `agetype`.
 #' @param ht Top height (m).

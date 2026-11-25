@@ -121,14 +121,21 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
 
   // GYPSY isn't meant for densities of 30 stems/ha or fewer: the Yield Table
   // Generator refuses them and the GYPSY DLL can hang on them. They are still
-  // projected here
+  // projected here, except aspen at 20 stems/ha or fewer, which isn't grown
+  // (as the SAS)
   {
-    std::vector<int> low_n;
-    for (std::size_t i = 0; i < nr; i++)
-      if (in.n[i] > 0 && in.n[i] <= 30) low_n.push_back(static_cast<int>(i));
+    std::vector<int> low_n, low_aw;
+    for (std::size_t i = 0; i < nr; i++) {
+      if (!(in.n[i] > 0 && in.n[i] <= 30)) continue;
+      if (spp[i] == AW && nty[i] == "N" && in.n[i] <= 20) low_aw.push_back(static_cast<int>(i));
+      else low_n.push_back(static_cast<int>(i));
+    }
     if (!low_n.empty())
       warn.push_back("Density of 30 stems/ha or fewer in row(s) " + join_rows(low_n) +
                      ": outside GYPSY's intended range (the GYPSY DLL can hang on these); projected anyway.");
+    if (!low_aw.empty())
+      warn.push_back("Aspen density of 20 stems/ha or fewer in row(s) " + join_rows(low_aw) +
+                     ": outside GYPSY's intended range; not grown.");
   }
 
   std::vector<double> gw_in;   // SimTI: genetic worth, missing SW and PL values as 0
@@ -241,6 +248,27 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
   if (!no_si.empty())
     warn.push_back("No SI for row(s) " + join_rows(no_si) +
                    " (age below 7.5 for AW/PL or 9.5 for SB/SW); these species are not grown but still count toward the leading age.");
+
+  // Total ages below GYPSY's minimum with a supplied SI. The GYPSY DLL
+  // rejects any total age below 7.5 (AW, PL) or 9.5 (SB, SW). Here a species
+  // is grown from total age 0 (AW: breast height age -1, where the density
+  // model starts), below that it isn't
+  {
+    std::vector<int> not_grown, below_min;
+    for (std::size_t i = 0; i < nr; i++) {
+      if (miss(si_t[i]) || miss(totage[i]) || !(sv(in.n[i]) > 0)) continue;
+      double min_age = (spp[i] == AW || spp[i] == PL) ? 7.5 : 9.5;
+      bool grown = spp[i] == AW ? sv(bhage[i]) > -1 : totage[i] > 0;
+      if (!grown) not_grown.push_back(static_cast<int>(i));
+      else if (totage[i] < min_age) below_min.push_back(static_cast<int>(i));
+    }
+    if (!not_grown.empty())
+      warn.push_back("Total age at or below 0 (AW: breast height age at or below -1) in row(s) " + join_rows(not_grown) +
+                     ": the species isn't established yet; not grown.");
+    if (!below_min.empty())
+      warn.push_back("Total age below 7.5 (AW, PL) or 9.5 (SB, SW) in row(s) " + join_rows(below_min) +
+                     ": below GYPSY's minimum (the GYPSY DLL rejects these); projected anyway.");
+  }
 
   // Basal area comes from DBH, so a species not yet at breast height (top
   // height at or below bh at its age) can't have one: ignore it. The GYPSY

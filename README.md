@@ -60,7 +60,7 @@ separate argument:
 | `stand`     | Stand identifier. Each species can appear only once per stand.              |
 | `stand_age` | Stand age. Copied to the `standage` output column; not used in the model.  |
 | `spp`       | Species group: `AW` (aspen), `SB` (black spruce), `SW` (white spruce) or `PL` (lodgepole pine). |
-| `n`         | Density (stems/ha) at the given age, or the initial density (N0; at total age 0, AW at breast height age 0) with `ntype = "N0"`. 30 stems/ha or fewer gives a warning. |
+| `n`         | Density (stems/ha) at the given age, or the initial density (N0; at total age 0, AW at breast height age 0) with `ntype = "N0"`. 30 stems/ha or fewer gives a warning; aspen at 20 or fewer isn't grown. |
 | `si`        | Site index (m). Breast height age 50 by default (`sitype = "B"`), or total age 50 with `sitype = "T"`. |
 | `age`       | Age (years). Total age by default (`agetype = "T"`), or breast height (`"B"`) or stump height (`"S"`) age. |
 | `ht`        | Top height (m).                                                             |
@@ -77,6 +77,9 @@ Each row needs two out of `si`, `age` and `ht` in order to calculate the third:
 - A supplied `si` takes precedence over the computed SI.
 - With `si` and `ht`, age is computed from them, and any supplied `age` is
   ignored.
+- A total age below 7.5 (AW, PL) or 9.5 (SB, SW) with a supplied `si` gives a
+  warning. It is projected if total age is above 0 (AW: breast height age
+  above -1); otherwise that species isn't grown.
 
 Optional inputs:
 

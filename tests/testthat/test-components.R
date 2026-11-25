@@ -78,18 +78,19 @@ test_that("GYPSY_Sim ignores BA for species below breast height", {
   # PL at total age 5 with SI 18 is below breast height; SW at 30 is above it
   args <- list(stand = c(1, 1), stand_age = c(30, 30), spp = c("SW", "PL"),
                n = c(900, 1500), si = c(16, 18), age = c(30, 5), simlen = 60)
-  init <- attr(do.call(GYPSY_Sim, c(args, list(baflag = 0))), "stand_init")
+  # PL at 5 is also below GYPSY's minimum total age (7.5): that warning too
+  init <- attr(suppressWarnings(do.call(GYPSY_Sim, c(args, list(baflag = 0)))), "stand_init")
   expect_gt(init$sw_bhage, 0)
   expect_lte(init$pl_bhage, 0)
 
-  expect_warning(out <- do.call(GYPSY_Sim, c(args, list(ba = c(8, 0.5)))),
-                 "BA ignored for row\\(s\\) 2: .*breast height")
+  expect_warning(expect_warning(out <- do.call(GYPSY_Sim, c(args, list(ba = c(8, 0.5)))),
+                                "BA ignored for row\\(s\\) 2: .*breast height"), "Total age below")
   expect_true(is.na(attr(out, "stand_init")$pl_ba))
   expect_equal(attr(out, "stand_init")$sw_ba, 8)
   expect_equal(out, suppressWarnings(do.call(GYPSY_Sim, c(args, list(ba = c(8, NA))))),
                ignore_attr = TRUE)
-  # A zero BA is consistent with being below breast height: no warning
-  expect_no_warning(do.call(GYPSY_Sim, c(args, list(ba = c(8, 0)))))
+  # A zero BA is consistent with being below breast height: no BA warning
+  expect_warning(do.call(GYPSY_Sim, c(args, list(ba = c(8, 0)))), "^Total age below")
 })
 
 test_that("GYPSY_Sim warns about densities of 30 stems/ha or fewer, and still projects them", {
@@ -99,6 +100,27 @@ test_that("GYPSY_Sim warns about densities of 30 stems/ha or fewer, and still pr
                  "30 stems/ha or fewer in row\\(s\\) 1:")
   expect_true(any(out$tvol_sw > 0))
   expect_no_warning(do.call(GYPSY_Sim, c(args, list(n = c(31, 1200)))))
+})
+
+test_that("GYPSY_Sim warns about aspen at 20 stems/ha or fewer, which isn't grown", {
+  expect_warning(out <- GYPSY_Sim(1, 30, "AW", 15, si = 16, age = 30, simlen = 40),
+                 "Aspen density of 20 stems/ha or fewer in row\\(s\\) 1: .*not grown")
+  expect_true(all(out$tvol_aw == 0))
+})
+
+test_that("GYPSY_Sim warns about total ages below GYPSY's minimum", {
+  # SI supplied: AW at total age 2 is below breast height age -1, SB at 0 is
+  # not established (neither grown); PL at 5 is below 7.5 but grown; SW at
+  # 30 is fine
+  expect_warning(
+    expect_warning(out <- GYPSY_Sim(rep(1, 4), rep(20, 4), c("AW", "PL", "SB", "SW"), rep(1500, 4),
+                                    si = rep(16, 4), age = c(2, 5, 0, 30), simlen = 40),
+                   "Total age at or below 0 .* row\\(s\\) 1, 3: .*not grown"),
+    "Total age below 7.5 \\(AW, PL\\) or 9.5 \\(SB, SW\\) in row\\(s\\) 2: .*projected anyway")
+  expect_true(all(out$tvol_aw == 0) && all(out$tvol_sb == 0))
+  expect_true(any(out$tvol_pl > 0))
+  expect_no_warning(GYPSY_Sim(c(1, 1), c(20, 20), c("AW", "PL"), c(1500, 1500),
+                              si = c(16, 16), age = c(7.5, 7.5), simlen = 40))
 })
 
 test_that("qmd_ is the quadratic mean diameter", {
@@ -112,14 +134,16 @@ test_that("aspen just below breast height is grown, as the GYPSY DLL does", {
   # SI_bh 18 gives 3.22096 years to breast height. Reference values from the
   # GYPSY 2009 DLL (aspen alone, 2000 stems/ha, stand age 20)
   y2bh <- 3.22096052110905
-  out  <- GYPSY_Sim(1, 20, "AW", 2000, si = 18, age = y2bh - 0.5, simlen = 60)
+  expect_warning(out <- GYPSY_Sim(1, 20, "AW", 2000, si = 18, age = y2bh - 0.5, simlen = 60),
+                 "Total age below 7.5")
   init <- attr(out, "stand_init")
   expect_equal(init$aw_bhage, -0.5, tolerance = 1e-6)
   expect_equal(init$aw_sdf, 612.14631912940092, tolerance = 1e-8)
   expect_equal(init$aw_den0, 1998.54367505258, tolerance = 1e-8)
   expect_equal(out[abs(standage - 60) < 1e-6, mvol_aw], 53.588098992342836, tolerance = 1e-8)
   # Below BH age -1 the density model is undefined (log(age + 1)): not grown
-  out <- GYPSY_Sim(1, 20, "AW", 2000, si = 18, age = y2bh - 1.001, simlen = 60)
+  expect_warning(out <- GYPSY_Sim(1, 20, "AW", 2000, si = 18, age = y2bh - 1.001, simlen = 60),
+                 "not grown")
   expect_true(is.na(attr(out, "stand_init")$aw_sdf))
 })
 
