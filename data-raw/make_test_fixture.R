@@ -1,27 +1,26 @@
 # Build the SAS validation fixture used by tests/testthat/test-sas.R
 #
-# Takes a fixed sample of stands from the SAS test run (GYPSY_run.sas on
-# test_gypsy_bp.xlsx, output for_gypsy_test_bp.csv) and saves their inputs
-# and SAS outputs to tests/testthat/fixtures/sas_subset.rds.
+# Takes a fixed sample of PGYI interval starts (2026-06-03 export, compiled
+# by rPSPab) from the GYPSY_run.sas run of data-raw/rpspab_validation/06_sas.R
+# (input in_pgyi.xlsx, output out_pgyi.csv) and saves their inputs and SAS
+# outputs to tests/testthat/fixtures/sas_subset.rds. The sample covers every
+# species mix, plus up to 3 stands for each GYPSY DLL rule that shows in the
+# set (D1, D2, D3/D9, D10), so the tests also check where rGYPSY departs from
+# the SAS.
 #
-# The full data lives in scratch/data/ (git-ignored). Run from the package root.
+# The full data lives in scratch/data/rpspab_validation/sas_run/
+# (git-ignored). Run from the package root after 06_sas.R.
 
 library(data.table)
 library(openxlsx)
+devtools::load_all(".")
+source("tests/testthat/helper-sas.R")
 
-data_dir <- "scratch/data"
+run_dir  <- "scratch/data/rpspab_validation/sas_run"
 n_stands <- 300
 
-inp <- as.data.table(read.xlsx(file.path(data_dir, "test_gypsy_bp.xlsx")))
-
-# Sample within each species mix so mixed stands are represented
-set.seed(20090521)
-mixes <- inp[, .(mix = paste(sort(Species), collapse = "-")), by = Stand]
-n_all <- nrow(mixes)
-pick <- mixes[, .(Stand = if (.N <= 3) Stand else sample(Stand, max(3, round(n_stands*.N/n_all)))), by = mix]$Stand
-pick <- sort(unique(c(pick,
-                      372,     # no usable total age (SAS projects all NA)
-                      1721)))  # merch volume on a 1e-5 rounding boundary
+inp <- as.data.table(read.xlsx(file.path(run_dir, "in_pgyi.xlsx")))
+inp[, Stan := NULL]
 
 # SAS output columns compared by the tests
 spp <- c("aw", "sb", "sw", "pl")
@@ -43,24 +42,41 @@ year_cols <- c("totage1", "Standage1",
                "mai00_all", "mai1_all", "mai2_all", "mai00_con", "mai1_con", "mai2_con",
                "mai00_dec", "mai1_dec", "mai2_dec")
 
-hdr <- names(fread(file.path(data_dir, "for_gypsy_test_bp.csv"), nrows = 0))
+sas_csv <- file.path(run_dir, "out_pgyi.csv")
+hdr <- names(fread(sas_csv, nrows = 0))
 ci <- function(x) {
   m <- hdr[match(tolower(x), tolower(hdr))]
   if (anyNA(m)) stop("Missing SAS columns: ", paste(x[is.na(m)], collapse = ", "))
   m
 }
-sas <- fread(file.path(data_dir, "for_gypsy_test_bp.csv"),
-             select = c("Stand", "sect", ci(stand_cols), ci(year_cols)),
-             na.strings = c("", "."))[Stand %in% pick]
+sas <- fread(sas_csv, select = c("Stand", "sect", ci(stand_cols), ci(year_cols)), na.strings = c("", "."))
 setnames(sas, tolower(names(sas)))
+sas_stand  <- sas[sect == 1, c("stand", tolower(stand_cols)), with = FALSE]
+sas_yearly <- sas[, c("stand", "sect", tolower(year_cols)), with = FALSE]
+
+# Stands where a DLL rule applies, found on the whole set
+r1 <- run_sas_inputs(inp, stump_dob = 13, top_dib = 7)
+rules <- list(D3_D9 = start_rule_stands(sas_stand, r1),
+              D10   = beyond_sas_stands(sas_stand, r1),
+              D1    = aw_below_bh_stands(r1),
+              D2    = interp_stands(sas_yearly, r1))
+print(lengths(rules))
+
+# Sample within each species mix so mixed stands are represented
+set.seed(20090521)
+mixes <- inp[, .(mix = paste(sort(Species), collapse = "-")), by = Stand]
+n_all <- nrow(mixes)
+pick <- mixes[, .(Stand = if (.N <= 3) Stand else sample(Stand, max(3, round(n_stands*.N/n_all)))), by = mix]$Stand
+pick <- sort(unique(c(pick, unlist(lapply(rules, function(s) if (length(s) <= 3) s else sample(s, 3))))))
 
 fixture <- list(
   input  = inp[Stand %in% pick],
-  stand  = sas[sect == 1, c("stand", tolower(stand_cols)), with = FALSE],
-  yearly = sas[, c("stand", "sect", tolower(year_cols)), with = FALSE]
+  stand  = sas_stand[stand %in% pick],
+  yearly = sas_yearly[stand %in% pick]
 )
 
 dir.create("tests/testthat/fixtures", recursive = TRUE, showWarnings = FALSE)
 saveRDS(fixture, "tests/testthat/fixtures/sas_subset.rds", compress = "xz")
 cat(length(pick), "stands,", nrow(fixture$yearly), "yearly rows,",
     round(file.size("tests/testthat/fixtures/sas_subset.rds")/1e6, 1), "MB\n")
+for (nm in names(rules)) cat(nm, ":", paste(intersect(rules[[nm]], pick), collapse = ", "), "\n")

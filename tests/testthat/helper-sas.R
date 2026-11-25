@@ -1,4 +1,4 @@
-# Helpers for comparing GYPSY_Sim with the SAS test run
+# Helpers for comparing GYPSY_Sim with GYPSY_run.sas on a sample of PGYI starts
 # (fixture built by data-raw/make_test_fixture.R)
 
 sas_fixture <- function() readRDS(test_path("fixtures", "sas_subset.rds"))
@@ -79,6 +79,25 @@ beyond_sas_stands <- function(sas_stand, r) {
   sort(unique(bad))
 }
 
+# Stands with aspen just below breast height and an SDF (D1): rGYPSY, as the
+# DLL, grows it from breast height age -1, the SAS only from 0
+aw_below_bh_stands <- function(r) {
+  init <- attr(r, "stand_init")
+  sort(unique(init$stand[!is.na(init$aw_bhage) & init$aw_bhage > -1 & init$aw_bhage <= 0 &
+                           !is.na(init$aw_sdf) & init$aw_sdf > 0]))
+}
+
+# Stands where rGYPSY, as the DLL, interpolates BA over the ratio cap while the
+# lagged predicted BA is 0 (D2): a localized BA where the SAS has none
+interp_stands <- function(sas_yearly, r) {
+  m <- align_sas(sas_yearly, r, c("stand", "sect"), c("stand", "year"))
+  bad <- unlist(lapply(.spp, function(s) {
+    x <- m[[paste0("sas.ba_loc_", s)]]; y <- m[[paste0("ba_", s)]]
+    m$stand[is.na(x) & !is.na(y) & y != 0]
+  }))
+  sort(unique(bad))
+}
+
 # Join SAS and R rows; SAS value columns get a "sas." prefix so names never clash
 align_sas <- function(sas, r, by_sas, by_r) {
   sas <- data.table::copy(sas)
@@ -95,6 +114,10 @@ align_sas <- function(sas, r, by_sas, by_r) {
 # * merchantable volume: the SAS rounds it to 1e-5, rGYPSY doesn't, so a
 #   species is up to half a step apart and the conifer / stand totals up to 2
 #   steps.
+# And within solver tolerance: the SI and age solvers stop at a change under
+# 1e-8, so breast height ages can be up to about 1e-7 years apart, and the
+# merchantable stems, which depend on them through the DBH distribution, up
+# to about 3e-5 relative.
 expect_sas_match <- function(m, map, rel_tol = 1e-6) {
   for (a in names(map)) {
     x <- m[[paste0("sas.", a)]]
@@ -111,6 +134,8 @@ expect_sas_match <- function(m, map, rel_tol = 1e-6) {
     lim <- rel_tol*abs(x[ok]) + 1e-8
     if (grepl("^(mv|mai[12])", a)) lim <- lim + 1.01e-5
     if (grepl("^v_(con|all)_mv", a)) lim <- lim + 2.01e-5
+    if (grepl("^bhage", a)) lim <- lim + 2e-7
+    if (grepl("^mn[12]_", a)) lim <- pmax(lim, 5e-5*abs(x[ok]))
     bad <- sum(abs(x[ok] - y[ok]) > lim)
     expect_equal(bad, 0L, info = paste(a, "values"))
   }

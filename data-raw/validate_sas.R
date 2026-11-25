@@ -1,7 +1,9 @@
-# Validate GYPSY_Sim() against the full SAS test run
+# Validate GYPSY_Sim() against a GYPSY_run.sas run
 #
-# Runs every stand in test_gypsy_bp.xlsx through GYPSY_Sim() and compares the
-# result with each column of for_gypsy_test_bp.csv (output of GYPSY_run.sas).
+# Runs every stand of a GYPSY_run.sas input workbook (input_file) through
+# GYPSY_Sim() and compares the result with each column of the program's
+# exported CSV (sas_csv). Set both before sourcing this file;
+# data-raw/rpspab_validation/06_sas.R does, for the RSA and PGYI runs.
 #
 # Each SAS column is either
 #   direct   - the same value is returned by GYPSY_Sim() or attr(, "stand_init")
@@ -19,9 +21,7 @@
 #
 # Another script can set rgypsy_dir, data_dir, report_name, run_label and
 # run_sim() before sourcing this file, to validate a different build of the
-# model with the same comparisons (e.g. webGYPSY/test/validate_sas_wasm.R),
-# or input_file and sas_csv to compare a different GYPSY_run.sas run (input
-# in the layout of test_gypsy_bp.xlsx, and the program's exported CSV).
+# model with the same comparisons (e.g. webGYPSY/test/validate_sas_wasm.R).
 
 library(data.table)
 library(openxlsx)
@@ -38,8 +38,8 @@ spp_l <- c("aw", "sb", "sw", "pl")
 spp_u <- toupper(spp_l)
 
 # ---- Run GYPSY_Sim -------------------------------------------------------------
-if(!exists("input_file")) input_file <- file.path(data_dir, "test_gypsy_bp.xlsx")
-if(!exists("sas_csv"))    sas_csv    <- file.path(data_dir, "for_gypsy_test_bp.csv")
+if(!exists("input_file") || !exists("sas_csv"))
+  stop("Set input_file (GYPSY_run.sas input workbook) and sas_csv (its exported output) before sourcing.")
 inp <- as.data.table(read.xlsx(input_file))
 
 if(!exists("run_sim")) run_sim <- function(stump_dob, top_dib) {
