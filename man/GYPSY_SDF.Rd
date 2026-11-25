@@ -46,8 +46,8 @@ age).}
 \item{tol}{Convergence tolerance.}
 }
 \value{
-A list with \code{aw_sdf}, \code{sb_sdf}, \code{sw_sdf}, \code{pl_sdf} (AW, SB and SW
-are 0 when not computed, PL is \code{NA}) and \code{aw_den0}, \code{sb_den0}, \code{sw_den0},
+A list with \code{aw_sdf}, \code{sb_sdf}, \code{sw_sdf}, \code{pl_sdf} (\code{NA} when not
+computed) and \code{aw_den0}, \code{sb_den0}, \code{sw_den0},
 \code{pl_den0}: density at age 0 (AW at breast height age 0, others at total
 age 0). Arguments given as a single value are repeated for every stand,
 with a warning.

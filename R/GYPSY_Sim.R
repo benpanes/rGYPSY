@@ -1,5 +1,6 @@
 # Project stand with GYPSY
-# Follows GYPSY_run.sas (MAY 21, 2009 functions)
+# Follows GYPSY_run.sas (MAY 21, 2009 functions); where the GYPSY 2009 DLL
+# differs from it, the DLL
 # Variables:
 #   SI, Age, TopHt, BA, N
 
@@ -55,9 +56,8 @@
 #' @param aw_si_b,sb_si_b,sw_si_b,pl_si_b Site index at breast height age 50.
 #'
 #' @return A list with `aw_psi`, `sb_psi`, `sw_psi` and `pl_psi`, capped at
-#'   100. As in the SAS, AW, SB and SW are 0 when they can't be computed, PL is
-#'   `NA`. Arguments given as a single value are repeated for every stand,
-#'   with a warning.
+#'   100, `NA` when they can't be computed. Arguments given as a single value
+#'   are repeated for every stand, with a warning.
 #' @seealso [GYPSY_SDF()], [GYPSY_Sim()]
 #' @export
 #' @examples
@@ -112,8 +112,8 @@ GYPSY_PSI <- function(stand,
 #' @param iter Maximum iterations.
 #' @param tol Convergence tolerance.
 #'
-#' @return A list with `aw_sdf`, `sb_sdf`, `sw_sdf`, `pl_sdf` (AW, SB and SW
-#'   are 0 when not computed, PL is `NA`) and `aw_den0`, `sb_den0`, `sw_den0`,
+#' @return A list with `aw_sdf`, `sb_sdf`, `sw_sdf`, `pl_sdf` (`NA` when not
+#'   computed) and `aw_den0`, `sb_den0`, `sw_den0`,
 #'   `pl_den0`: density at age 0 (AW at breast height age 0, others at total
 #'   age 0). Arguments given as a single value are repeated for every stand,
 #'   with a warning.
@@ -188,9 +188,9 @@ GYPSY_Ht <- function(spp,
 #' @param age Breast height age for AW, total age for other species.
 #' @param sdf Stand density factor from [GYPSY_SDF()].
 #' @param si_b Site index at breast height age 50.
-#' @param psi Percent stocking index (0 when unknown).
+#' @param psi Percent stocking index (0 or `NA` when unknown).
 #' @param sdf_aw,sdf_sw,sdf_sb Other species' SDFs in the stand (SW uses AW;
-#'   PL uses AW, SW and SB); 0 when absent.
+#'   PL uses AW, SW and SB); 0 or `NA` when absent.
 #'
 #' @return Density (stems/ha); `NA` when `sdf` is not positive. Arguments
 #'   given as a single value are repeated to match the longest input, with a
@@ -230,7 +230,7 @@ GYPSY_N <- function(spp,
 #'   above breast height.
 #' @param n0 Initial density (`*_den0` from [GYPSY_SDF()]).
 #' @param si_b Site index at breast height age 50.
-#' @param psi Percent stocking index (0 when unknown).
+#' @param psi Percent stocking index (0 or `NA` when unknown).
 #' @param ba Current basal area of the species (m2/ha).
 #' @param sdf_aw,sdf_sb,sdf_sw,sdf_pl Competitor SDFs used by SW and PL; 0
 #'   for species that have not reached breast height.
@@ -284,7 +284,7 @@ GYPSY_BAinc <- function(spp,
 #' @param top_dib Minimum top diameter inside bark (cm).
 #'
 #' @return A list with `tvol` (total volume, m3/ha), `mvol` (merchantable
-#'   volume, m3/ha, rounded to 1e-5 as in the SAS), `mn` (merchantable
+#'   volume, m3/ha), `mn` (merchantable
 #'   stems/ha) and `qmd` (quadratic mean diameter, cm). Arguments given as a
 #'   single value are repeated to match the longest input, with a warning for
 #'   the stand inputs (`spp`, `ba`, `topht`, `n`, `bhage`) but not the
@@ -352,7 +352,8 @@ GYPSY_Vol <- function(spp,
 #' @param stand Stand identifier.
 #' @param stand_age Stand age (total), used for the `standage` output column.
 #' @param spp Species: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
-#' @param n Density (stems/ha).
+#' @param n Density (stems/ha). Values of 30 stems/ha or fewer are projected
+#'   with a warning: they are outside the range GYPSY is meant for.
 #' @param si Site index (m), of the type given by `sitype`.
 #' @param age Age, of the type given by `agetype`.
 #' @param ht Top height (m).

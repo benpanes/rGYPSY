@@ -30,7 +30,7 @@ above breast height.}
 
 \item{si_b}{Site index at breast height age 50.}
 
-\item{psi}{Percent stocking index (0 when unknown).}
+\item{psi}{Percent stocking index (0 or \code{NA} when unknown).}
 
 \item{ba}{Current basal area of the species (m2/ha).}
 

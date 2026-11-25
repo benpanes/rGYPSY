@@ -83,16 +83,21 @@ inline void StandPSI(const double ps[4], const double age_t[4], const double si_
 // age = AW breast height age, total age for the others.
 // at0 (optional): species whose den is already the initial density (N0), so
 // the SDF is solved at age 0; they still need an age to be grown.
-// As in the SAS, missing AW, SB and SW SDFs are 0, PL is NaN.
+// Missing AW, SB and SW SDFs are 0 here, PL is NaN, as in the SAS (callers
+// report them as missing).
+// AW: solved down to BH age -1, where log(age + 1) stops, as the GYPSY 2009
+// DLL does (the SAS needs BH age > 0, so aspen just below breast height would
+// not be grown).
 
 inline void StandSDF(const double age[4], const double den[4], const double si_b[4], const double psi[4],
                      int iter, double tol, double sdf[4], double den0[4], bool converged[4],
                      const bool* at0 = nullptr) {
   const double min_den[4] = {20.0, 0.0, 0.0, 0.0};   // SAS: den_aw>20, others den>0
+  const double min_age[4] = {-1.0, 0.0, 0.0, 0.0};   // AW BH age, others total age
 
   for (int s = 0; s < 4; s++) { sdf[s] = NaN; den0[s] = NaN; converged[s] = true; }
   for (int s = 0; s < 4; s++) {   // order matters: SW uses AW, PL uses AW, SW, SB
-    if (sv(den[s]) > min_den[s] && sv(age[s]) > 0 && sv(si_b[s]) > 0) {
+    if (sv(den[s]) > min_den[s] && sv(age[s]) > min_age[s] && sv(si_b[s]) > 0) {
       sdf[s]  = SolveSDF(s, den[s], at0 && at0[s] ? 0.0 : age[s], si_b[s], psi[s], sdf, iter, tol, converged[s]);
       den0[s] = Density(s, 0.0, sdf[s], si_b[s], psi[s], sdf);
     }

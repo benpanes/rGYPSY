@@ -16,8 +16,18 @@ skip_ba <- ba_ignored_stands(fx$input, r1)
 test_that("only stand 8413 has a BA ignored below breast height", {
   expect_equal(skip_ba, 8413)
 })
-fx$stand  <- fx$stand[!fx$stand$stand %in% skip_ba, ]
-fx$yearly <- fx$yearly[!fx$yearly$stand %in% skip_ba, ]
+
+# rGYPSY follows the GYPSY DLL's starting BA rule (D3), not the SAS's: in these
+# stands the composition at breast height age 0 counts, or the SW / PL BA
+# increment's competitors include, a species the SAS leaves out. Their early
+# BA and volume then differ too, so they are not compared.
+skip_rule <- start_rule_stands(fx$stand, r1)
+test_that("the DLL's starting BA rule changes only the expected stands", {
+  expect_equal(skip_rule, c(869, 1879, 1899, 1930, 1963, 1980, 2007, 4455, 4782, 8829))
+})
+skip <- c(skip_ba, skip_rule)
+fx$stand  <- fx$stand[!fx$stand$stand %in% skip, ]
+fx$yearly <- fx$yearly[!fx$yearly$stand %in% skip, ]
 
 test_that("stand-level SI, ages, PSI, SDF, initial density, SC0, BA0 match SAS", {
   m <- align_sas(fx$stand, attr(r1, "stand_init"), "stand", "stand")

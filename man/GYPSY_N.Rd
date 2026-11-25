@@ -15,10 +15,10 @@ GYPSY_N(spp, age, sdf, si_b, psi = 0, sdf_aw = 0, sdf_sw = 0, sdf_sb = 0)
 
 \item{si_b}{Site index at breast height age 50.}
 
-\item{psi}{Percent stocking index (0 when unknown).}
+\item{psi}{Percent stocking index (0 or \code{NA} when unknown).}
 
 \item{sdf_aw, sdf_sw, sdf_sb}{Other species' SDFs in the stand (SW uses AW;
-PL uses AW, SW and SB); 0 when absent.}
+PL uses AW, SW and SB); 0 or \code{NA} when absent.}
 }
 \value{
 Density (stems/ha); \code{NA} when \code{sdf} is not positive. Arguments

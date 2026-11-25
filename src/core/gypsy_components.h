@@ -111,7 +111,7 @@ inline void PSI(const Cols4& ps, const Cols4& age_t, const Cols4& si_b, Cols4& p
     double p[4], a[4], si[4], out[4];
     for (int s = 0; s < 4; s++) { p[s] = ps[s][i]; a[s] = age_t[s][i]; si[s] = si_b[s][i]; }
     StandPSI(p, a, si, out);
-    for (int s = 0; s < 4; s++) psi[s][i] = out[s];
+    for (int s = 0; s < 4; s++) psi[s][i] = sv(out[s]) > 0 ? out[s] : NaN;   // the SAS has 0 for AW, SB, SW
   }
 }
 
@@ -128,7 +128,8 @@ inline void SDF(const Cols4& age, const Cols4& den, const Cols4& si_b, const Col
     StandSDF(a, d, si, p, iter, tol, f, d0, conv);
     for (int s = 0; s < 4; s++) {
       if (!conv[s]) warn.push_back("Row " + std::to_string(i + 1) + ": SDF did not converge.");
-      sdf[s][i] = f[s]; den0[s][i] = d0[s];
+      sdf[s][i] = sv(f[s]) > 0 ? f[s] : NaN;   // the SAS has 0 for AW, SB, SW
+      den0[s][i] = d0[s];
     }
   }
 }
@@ -152,7 +153,7 @@ inline Vec N(const StrVec& spp, const Vec& age, const Vec& sdf, const Vec& si_b,
   for (std::size_t i = 0; i < spp.size(); i++) {
     int s = spp_index(spp[i]);
     if (s >= 0 && sv(sdf[i]) > 0) {
-      double comp[4] = {sdf_aw[i], sdf_sb[i], sdf_sw[i], NaN};
+      double comp[4] = {nz(sdf_aw[i]), nz(sdf_sb[i]), nz(sdf_sw[i]), NaN};
       out[i] = Density(s, age[i], sdf[i], si_b[i], psi[i], comp);
     }
   }
@@ -176,7 +177,7 @@ inline Vec BAinc(const StrVec& spp, const Vec& bhage, const Vec& sc, const Vec& 
 
 // ---- Total and merchantable volume (SAS examp18) -----------------------------------
 // Total volume needs top height > 1.3 m; merchantable values also need n > 0
-// (through QMD). Merchantable volume is rounded to 1e-5 as in the SAS.
+// (through QMD). qmd is the quadratic mean diameter, sqrt(40000 BA / (pi N)).
 struct VolResult { Vec tvol, mvol, mn, qmd; };
 
 inline VolResult Vol(const StrVec& spp, const Vec& ba, const Vec& topht, const Vec& n, const Vec& bhage,
@@ -188,14 +189,14 @@ inline VolResult Vol(const StrVec& spp, const Vec& ba, const Vec& topht, const V
     if (s < 0 || miss(ba[i])) continue;
 
     double k = (sv(n[i]) > 0) ? std::sqrt(ba[i]/(n[i]/10000.0)) : NaN;
-    out.qmd[i] = k;
+    out.qmd[i] = miss(k) ? NaN : k*QMD_K;
 
     if (sv(topht[i]) > 1.3) {
       double tv = TotVol(s, ba[i], topht[i]);
       out.tvol[i] = tv;
       if (sv(k) > 0) {
         MerchResult m = Merch(s, tv, k, topht[i], bhage[i], n[i], stump_ht[i], stump_dob[i], top_dib[i]);
-        out.mvol[i] = sas_round(m.mv, 0.00001);
+        out.mvol[i] = m.mv;
         out.mn[i]   = m.mn;
       }
     }

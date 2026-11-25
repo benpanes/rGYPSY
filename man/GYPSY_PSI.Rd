@@ -31,9 +31,8 @@ GYPSY_PSI(
 }
 \value{
 A list with \code{aw_psi}, \code{sb_psi}, \code{sw_psi} and \code{pl_psi}, capped at
-100. As in the SAS, AW, SB and SW are 0 when they can't be computed, PL is
-\code{NA}. Arguments given as a single value are repeated for every stand,
-with a warning.
+100, \code{NA} when they can't be computed. Arguments given as a single value
+are repeated for every stand, with a warning.
 }
 \description{
 Percent stocking at total age 50 for each species in a stand, from the

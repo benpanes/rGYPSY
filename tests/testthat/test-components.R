@@ -92,6 +92,37 @@ test_that("GYPSY_Sim ignores BA for species below breast height", {
   expect_no_warning(do.call(GYPSY_Sim, c(args, list(ba = c(8, 0)))))
 })
 
+test_that("GYPSY_Sim warns about densities of 30 stems/ha or fewer, and still projects them", {
+  args <- list(stand = c(1, 1), stand_age = c(60, 60), spp = c("SW", "PL"),
+               si = c(16, 18), age = c(60, 55), simlen = 40)
+  expect_warning(out <- do.call(GYPSY_Sim, c(args, list(n = c(30, 1200)))),
+                 "30 stems/ha or fewer in row\\(s\\) 1:")
+  expect_true(any(out$tvol_sw > 0))
+  expect_no_warning(do.call(GYPSY_Sim, c(args, list(n = c(31, 1200)))))
+})
+
+test_that("qmd_ is the quadratic mean diameter", {
+  out <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 50)
+  ok  <- !is.na(out$qmd_pl) & !is.na(out$ba_pl)
+  expect_true(any(ok))
+  expect_equal(pi*out$qmd_pl[ok]^2/40000*out$n_pl[ok], out$ba_pl[ok])
+})
+
+test_that("aspen just below breast height is grown, as the GYPSY DLL does", {
+  # SI_bh 18 gives 3.22096 years to breast height. Reference values from the
+  # GYPSY 2009 DLL (aspen alone, 2000 stems/ha, stand age 20)
+  y2bh <- 3.22096052110905
+  out  <- GYPSY_Sim(1, 20, "AW", 2000, si = 18, age = y2bh - 0.5, simlen = 60)
+  init <- attr(out, "stand_init")
+  expect_equal(init$aw_bhage, -0.5, tolerance = 1e-6)
+  expect_equal(init$aw_sdf, 612.14631912940092, tolerance = 1e-8)
+  expect_equal(init$aw_den0, 1998.54367505258, tolerance = 1e-8)
+  expect_equal(out[abs(standage - 60) < 1e-6, mvol_aw], 53.588098992342836, tolerance = 1e-8)
+  # Below BH age -1 the density model is undefined (log(age + 1)): not grown
+  out <- GYPSY_Sim(1, 20, "AW", 2000, si = 18, age = y2bh - 1.001, simlen = 60)
+  expect_true(is.na(attr(out, "stand_init")$aw_sdf))
+})
+
 test_that("GYPSY_Sim takes per-species merchantability standards", {
   base <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 100)
   alt  <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 100,

@@ -119,6 +119,18 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
   if (!miss_input.empty())
     throw Error("Simulation requires 2 of SI, Age, and Top Height. Check row(s): " + join_rows(miss_input));
 
+  // GYPSY isn't meant for densities of 30 stems/ha or fewer: the Yield Table
+  // Generator refuses them and the GYPSY DLL can hang on them. They are still
+  // projected here
+  {
+    std::vector<int> low_n;
+    for (std::size_t i = 0; i < nr; i++)
+      if (in.n[i] > 0 && in.n[i] <= 30) low_n.push_back(static_cast<int>(i));
+    if (!low_n.empty())
+      warn.push_back("Density of 30 stems/ha or fewer in row(s) " + join_rows(low_n) +
+                     ": outside GYPSY's intended range (the GYPSY DLL can hang on these); projected anyway.");
+  }
+
   std::vector<double> gw_in;   // SimTI: genetic worth, missing SW and PL values as 0
   if (ti) {
     for (std::size_t m : {ti->gw.size(), ti->sel_age.size()})
@@ -345,11 +357,11 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
   }
   for (int s = 0; s < 4; s++) {
     std::vector<double>& col = init.add(std::string(SPP[s]) + "_psi", ns);
-    for (std::size_t c = 0; c < ns; c++) col[c] = st[c].psi[s];
+    for (std::size_t c = 0; c < ns; c++) col[c] = sv(st[c].psi[s]) > 0 ? st[c].psi[s] : NaN;   // 0 inside, as the SAS
   }
   for (int s = 0; s < 4; s++) {
     std::vector<double>& col = init.add(std::string(SPP[s]) + "_sdf", ns);
-    for (std::size_t c = 0; c < ns; c++) col[c] = st[c].sdf[s];
+    for (std::size_t c = 0; c < ns; c++) col[c] = sv(st[c].sdf[s]) > 0 ? st[c].sdf[s] : NaN;
   }
   for (int s = 0; s < 4; s++) {
     std::vector<double>& col = init.add(std::string(SPP[s]) + "_den0", ns);

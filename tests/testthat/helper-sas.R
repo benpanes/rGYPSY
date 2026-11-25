@@ -58,6 +58,18 @@ ba_ignored_stands <- function(inp, r) {
   sort(unique(inp$Stand[!is.na(inp$BA) & inp$BA > 0 & is.na(used)]))
 }
 
+# Stands whose composition or BA at breast height age 0 (sc0, ba0) differ from
+# the SAS: rGYPSY uses the GYPSY DLL's starting BA rule (difference D3 in the
+# validation report), which the SAS doesn't
+start_rule_stands <- function(sas_stand, r) {
+  m <- align_sas(sas_stand, attr(r, "stand_init"), "stand", "stand")
+  differ <- function(x, y) !is.na(x) & !is.na(y) & abs(x - y) > 1e-6*abs(x) + 1e-8
+  bad <- unlist(lapply(.spp, function(s)
+    m$stand[differ(m[[paste0("sas.sc_", s, "0")]], m[[paste0(s, "_sc0")]]) |
+            differ(m[[paste0("sas.ba_", s, "_0")]], m[[paste0(s, "_ba0")]])]))
+  sort(unique(bad))
+}
+
 # Join SAS and R rows; SAS value columns get a "sas." prefix so names never clash
 align_sas <- function(sas, r, by_sas, by_r) {
   sas <- data.table::copy(sas)
@@ -67,8 +79,13 @@ align_sas <- function(sas, r, by_sas, by_r) {
 }
 
 # Compare SAS and R columns: same missing pattern, values within 1e-6 relative.
-# SAS writes merchantable volume rounded to 1e-5, so values built on it may be
-# one rounding step apart.
+# Where rGYPSY follows the GYPSY DLL's conventions instead of the SAS's:
+# * missing PSI and SDF: the SAS has 0 for AW, SB and SW, rGYPSY NA;
+# * localized BA once the BA grown from the observed BA reaches 0: the SAS has
+#   it missing, rGYPSY 0;
+# * merchantable volume: the SAS rounds it to 1e-5, rGYPSY doesn't, so a
+#   species is up to half a step apart and the conifer / stand totals up to 2
+#   steps.
 expect_sas_match <- function(m, map, rel_tol = 1e-6) {
   for (a in names(map)) {
     x <- m[[paste0("sas.", a)]]
@@ -77,10 +94,14 @@ expect_sas_match <- function(m, map, rel_tol = 1e-6) {
     expect_false(is.null(y), info = paste("R column", map[[a]]))
     if (is.null(x) || is.null(y)) next
 
+    if (grepl("^(psi|sdf)_", a)) x[!is.na(x) & x == 0] <- NA
+    if (grepl("^ba_loc_", a)) x[is.na(x) & !is.na(y) & y == 0] <- 0
+
     expect_identical(is.na(x), is.na(y), info = paste(a, "missing pattern"))
     ok  <- !is.na(x) & !is.na(y)
     lim <- rel_tol*abs(x[ok]) + 1e-8
-    if (grepl("^(mv|mai[12]|v_(con|all)_mv)", a)) lim <- lim + 1.01e-5
+    if (grepl("^(mv|mai[12])", a)) lim <- lim + 1.01e-5
+    if (grepl("^v_(con|all)_mv", a)) lim <- lim + 2.01e-5
     bad <- sum(abs(x[ok] - y[ok]) > lim)
     expect_equal(bad, 0L, info = paste(a, "values"))
   }

@@ -396,10 +396,13 @@ inline double TotVol(int s, double ba, double ht) {
   return NaN;
 }
 
+// Quadratic mean diameter from the SAS's k = sqrt(10000 BA / N): x 2/sqrt(pi)
+const double QMD_K = 1.1283791670955126;
+
 struct MerchResult { double mv, mn; };
 
 // Merchantable volume and merchantable density for one utilization standard
-//   tv = total volume, qmd = sqrt(BA/(N/10000)) (SAS k_<spp>)
+//   tv = total volume, qmd = k = sqrt(BA/(N/10000)) (SAS k_<spp>; QMD x sqrt(pi)/2)
 //   sh = stump height (m, <= 0.3), sdob = stump DOB (cm), tdib = top DIB (cm)
 inline MerchResult Merch(int s, double tv, double qmd, double ht, double bhage, double den,
                          double sh, double sdob, double tdib) {

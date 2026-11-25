@@ -38,7 +38,8 @@ GYPSY_Sim(
 
 \item{spp}{Species: \code{"AW"}, \code{"SB"}, \code{"SW"} or \code{"PL"}.}
 
-\item{n}{Density (stems/ha).}
+\item{n}{Density (stems/ha). Values of 30 stems/ha or fewer are projected
+with a warning: they are outside the range GYPSY is meant for.}
 
 \item{si}{Site index (m), of the type given by \code{sitype}.}
 

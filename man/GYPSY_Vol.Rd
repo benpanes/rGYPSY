@@ -34,7 +34,7 @@ GYPSY_Vol(
 }
 \value{
 A list with \code{tvol} (total volume, m3/ha), \code{mvol} (merchantable
-volume, m3/ha, rounded to 1e-5 as in the SAS), \code{mn} (merchantable
+volume, m3/ha), \code{mn} (merchantable
 stems/ha) and \code{qmd} (quadratic mean diameter, cm). Arguments given as a
 single value are repeated to match the longest input, with a warning for
 the stand inputs (\code{spp}, \code{ba}, \code{topht}, \code{n}, \code{bhage}) but not the

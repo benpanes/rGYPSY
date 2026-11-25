@@ -12,7 +12,8 @@
 //
 // The SAS data step keeps a variable's value from the previous year when its
 // condition isn't met, and treats missing as below every number; both are
-// reproduced here (see sv() in gypsy_eq.h).
+// reproduced here (see sv() in gypsy_eq.h). Where the GYPSY 2009 DLL differs
+// from the SAS, the DLL is followed.
 //
 // Steps:
 //   1. Species composition at BH age 0 of each species  (examp7 - examp11)
@@ -109,10 +110,6 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
   std::vector<double> TA1(simlen*4), BHA1(simlen*4), HT(simlen*4), DEN2(simlen*4),
                       SC(simlen*4), SCB(simlen*4), BA1(simlen*4), BA2(simlen*4), T1(simlen);
 
-  // SAS lag1() runs across stands: the first year of a stand sees the last
-  // year of the previous stand (normally zeroed because BH age <= 0)
-  double prev_ba1[4] = {NaN, NaN, NaN, NaN}, prev_ba2[4] = {NaN, NaN, NaN, NaN};
-
   for (std::size_t i = 0; i < ns; i++) {
     if (check_interrupt) check_interrupt();
 
@@ -162,8 +159,13 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
               den[o] = (sv(ta2[o]) >= 0 && sv(sdf[o]) > 0) ? Density(o, ta2[o], sdf[o], sib[o], psi[o], sdf) : NaN;
             }
           }
-          // examp10: species not yet at breast height count as 0
-          for (int o = 0; o < 4; o++) if (o != f && sv(bh2[o]) < 0) den[o] = 0.0;
+          // examp10: species not yet at breast height count as 0. As the GYPSY
+          // DLL, that is their BH age at the moment species f reaches breast
+          // height; the SAS uses their BH age that year, rounded
+          for (int o = 0; o < 4; o++) {
+            double bo = (miss(ta2[o]) || miss(y2[o])) ? NaN : ta2[o] - y2[o];
+            if (o != f && sv(bo) < 0) den[o] = 0.0;
+          }
 
           if (sv(den[f]) >= 0) sc0[f] = den[f]/sas_sum4(den);
         }
@@ -179,14 +181,18 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
       if (sv(den0[s]) > 0 && sv(sib[s]) > 0)
         ba0[s] = bh0[s]*BAinc(s, 0.0, sc0[s], den0[s], sib[s], psi[s], 0.0, zero);
 
-    // SW and PL: competitors that reached BH age later are left out
+    // SW and PL: competitors count once they are past breast height in the
+    // species' first projected year above breast height (fractional BH age
+    // bh0), as the GYPSY DLL does. The SAS leaves out every competitor with a
+    // smaller BH age, even one that passes breast height before that year
+    auto later = [&](int f, int x) { return !(sv(bha[x]) - sv(bha[f]) + bh0[f] > 0); };
     double sdf1[4] = {nz(sdf[AW]), nz(sdf[SB]), sdf[SW], nz(sdf[PL])};
-    for (int x : {AW, SB, PL}) if (sv(bha[SW]) > sv(bha[x])) sdf1[x] = 0.0;
+    for (int x : {AW, SB, PL}) if (later(SW, x)) sdf1[x] = 0.0;
     if (sv(den0[SW]) > 0 && sv(sib[SW]) > 0)
       ba0[SW] = bh0[SW]*BAinc(SW, 0.0, sc0[SW], den0[SW], sib[SW], psi[SW], 0.0, sdf1);
 
     sdf1[AW] = nz(sdf[AW]); sdf1[SB] = nz(sdf[SB]); sdf1[SW] = nz(sdf[SW]); sdf1[PL] = sdf[PL];
-    for (int x : {AW, SB, SW}) if (sv(bha[PL]) > sv(bha[x])) sdf1[x] = 0.0;
+    for (int x : {AW, SB, SW}) if (later(PL, x)) sdf1[x] = 0.0;
     if (sv(den0[PL]) > 0 && sv(sib[PL]) > 0)
       ba0[PL] = bh0[PL]*BAinc(PL, 0.0, sc0[PL], den0[PL], sib[PL], psi[PL], 0.0, sdf1);
     // sdf1 carries into the yearly loop, as SDF_xx1 does in the SAS
@@ -274,19 +280,17 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
     }
 
     // ---- examp14_1 - examp17: localized BA ------------------------------------
-    // BA from the previous year (SAS lag1), zero before breast height
+    // BA from the previous year of the same stand, zero before breast height
+    // (the SAS lag1() runs across stands; the first year is always below
+    // breast height, so this changes no result)
     std::vector<double> BA1L(simlen*4), BA2L(simlen*4);
     for (int k = 0; k < simlen; k++) {
       for (int s = 0; s < 4; s++) {
         int j = k*4 + s;
-        BA1L[j] = (k > 0) ? BA1[j - 4] : prev_ba1[s];
-        BA2L[j] = (k > 0) ? BA2[j - 4] : prev_ba2[s];
+        BA1L[j] = (k > 0) ? BA1[j - 4] : NaN;
+        BA2L[j] = (k > 0) ? BA2[j - 4] : NaN;
         if (sv(BHA1[j]) <= 0) { BA1L[j] = 0.0; BA2L[j] = 0.0; }
       }
-    }
-    for (int s = 0; s < 4; s++) {
-      prev_ba1[s] = BA1[(simlen - 1)*4 + s];
-      prev_ba2[s] = BA2[(simlen - 1)*4 + s];
     }
 
     // Observed / predicted BA at the observed age
@@ -325,12 +329,19 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
           bl = baobs[s]/bha[s]*bha1s;
         if (sv(ta[s]) > 0 && sv(BA1L[j]) > 0 && before && sv(rate[s]) > 0 && sv(rate[s]) < RATE_CAP[s])
           bl = rate[s]*BA1L[j];
-        if (sv(ta[s]) > 0 && sv(BA1L[j]) > 0 && before && sv(rate[s]) >= RATE_CAP[s] && sv(baobs[s]) > 0)
+        // Over the cap: interpolate, past breast height. The SAS also needs
+        // the lagged predicted BA above 0; the DLL doesn't
+        if (sv(ta[s]) > 0 && sv(bha1s) > 0 && before && sv(rate[s]) >= RATE_CAP[s] && sv(baobs[s]) > 0)
           bl = baobs[s]/bha[s]*bha1s;
         if (sv(ta[s]) > 0 && sv(BA2L[j]) > 0 && sv(ta1s) > sv(ta[s]))
           bl = BA2L[j];
+        // Once the BA grown from the observed BA reaches 0 the species has no
+        // BA (the SAS leaves it missing; the DLL gives 0)
+        if (sv(ta[s]) > 0 && BA2L[j] == 0 && sv(bha1s) > 0 && sv(ta1s) > sv(ta[s]) && sv(baobs[s]) > 0)
+          bl = 0.0;
 
-        // examp18: volumes
+        // examp18: volumes. k = sqrt(10000 BA / N) is what the merchantable
+        // equations take (the SAS's k_); QMD = k x 2/sqrt(pi)
         double qmd = (sv(dens) > 0 && !miss(bl)) ? std::sqrt(bl/(dens/10000.0)) : NaN;
         double tvs = NaN, mvs = NaN, mns = NaN, maits = NaN, maims = NaN;
         if (sv(hts) > 1.3 && !miss(bl)) {
@@ -338,7 +349,7 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
           if (sv(qmd) > 0) {
             MerchResult m = Merch(s, tvs, qmd, hts, bha1s, dens,
                                   merch.stump_ht[s], merch.stump_dob[s], merch.top_dib[s]);
-            mvs = sas_round(m.mv, 0.00001);
+            mvs = m.mv;   // the SAS rounds to 1e-5; the DLL doesn't
             mns = m.mn;
             if (sv(ta1s) > 0) { maits = tvs/ta1s; maims = mvs/ta1s; }
           }
@@ -353,7 +364,7 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
 
         (*o_ta[s])[r]  = ta1s;  (*o_bha[s])[r] = bha1s; (*o_ht[s])[r]   = hts;
         (*o_n[s])[r]   = dens;  (*o_sc[s])[r]  = scs;   (*o_ba[s])[r]   = bl;
-        (*o_qmd[s])[r] = qmd;   (*o_tv[s])[r]  = tv[s]; (*o_mv[s])[r]   = mv[s];
+        (*o_qmd[s])[r] = miss(qmd) ? NaN : qmd*QMD_K;   (*o_tv[s])[r]  = tv[s]; (*o_mv[s])[r]   = mv[s];
         (*o_mn[s])[r]  = mns;   (*o_mait[s])[r]= mait[s]; (*o_maim[s])[r] = maim[s];
         if (detail) {
           (*o_scb[s])[r] = SCB[j]; (*o_ba1[s])[r] = BA1[j]; (*o_ba2[s])[r] = BA2[j];

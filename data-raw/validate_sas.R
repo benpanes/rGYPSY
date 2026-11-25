@@ -233,10 +233,17 @@ compare <- function(sas_dt, r_dt, keys, src) {
                         worst_sect = if ("sect" %in% keys) m$sect[which(bad)[1]] else NA_integer_))
     }
     x <- as.numeric(x); y <- as.numeric(y)
+    # Where rGYPSY follows the GYPSY DLL's conventions: missing PSI and SDF are
+    # NA (the SAS has 0 for AW, SB, SW); localized BA is 0 once the BA grown
+    # from the observed BA reaches 0 (the SAS has it missing); merchantable
+    # volume isn't rounded to 1e-5 (half a step per species, 2 for the totals)
+    if (grepl("^(psi|sdf)_(aw|sb|sw|pl)$", v)) x[!is.na(x) & x == 0] <- NA
+    if (grepl("^ba_loc_", v)) x[is.na(x) & !is.na(y) & y == 0] <- 0
     both <- !is.na(x) & !is.na(y)
     d <- abs(x - y); d[!both] <- NA
     lim <- rel_tol*abs(x) + 1e-8
-    if (grepl("^(mv[12]|mai[12]|v_(con|all)_mv)", v)) lim <- lim + 1.01e-5
+    if (grepl("^(mv[12]|mai[12])", v)) lim <- lim + 1.01e-5
+    if (grepl("^v_(con|all)_mv", v)) lim <- lim + 2.01e-5
     bad <- (is.na(x) != is.na(y)) | (both & d > lim)
     rel <- d/pmax(abs(x), 1e-8)
     w <- if (any(bad)) which(bad)[which.max(replace(d[bad], is.na(d[bad]), Inf))] else NA_integer_
@@ -258,6 +265,31 @@ ba_skip <- sort(unique(ba_used[!is.na(BA) & BA > 0 & is.na(used), Stand]))
 cat(sprintf("Left out %d stand(s) whose BA GYPSY_Sim ignores below breast height: %s\n",
             length(ba_skip), paste(ba_skip, collapse = ", ")))
 sas <- sas[!stand %in% ba_skip]
+
+# rGYPSY uses the GYPSY DLL's starting BA rule (D3 in the validation report):
+# stands whose composition or BA at breast height age 0 differ from the SAS
+# are left out (their early BA and volume differ too)
+s0 <- merge(sas[sect == 1], rs, by = "stand", suffixes = c(".sas", ".r"))
+differ <- function(x, y) !is.na(x) & !is.na(y) & abs(x - y) > rel_tol*abs(x) + 1e-8
+rule_skip <- sort(unique(unlist(lapply(spp_l, function(s) {
+  a <- paste0("sc_", s, "0"); b <- paste0("ba_", s, "_0")
+  s0$stand[differ(s0[[paste0(a, ".sas")]], s0[[paste0(a, ".r")]]) | differ(s0[[paste0(b, ".sas")]], s0[[paste0(b, ".r")]])]
+}))))
+cat(sprintf("Left out %d stand(s) where the DLL's starting BA rule differs from the SAS's
+", length(rule_skip)))
+sas <- sas[!stand %in% rule_skip]
+
+# ... and its BA interpolation over the ratio cap where the lagged predicted BA
+# is 0 (D2): localized BA where the SAS has none
+s1 <- merge(sas[, c("stand", "sect", paste0("ba_loc_", spp_l)), with = FALSE], ry[, c("stand", "sect", paste0("ba_loc_", spp_l)), with = FALSE],
+            by = c("stand", "sect"), suffixes = c(".sas", ".r"))
+interp_skip <- sort(unique(unlist(lapply(spp_l, function(s) {
+  x <- s1[[paste0("ba_loc_", s, ".sas")]]; y <- s1[[paste0("ba_loc_", s, ".r")]]
+  s1$stand[is.na(x) & !is.na(y) & y != 0]
+}))))
+cat(sprintf("Left out %d stand(s) where the DLL interpolates BA and the SAS doesn't
+", length(interp_skip)))
+sas <- sas[!stand %in% interp_skip]
 
 res_s <- compare(sas[sect == 1], rs, "stand", src_s)
 res_y <- compare(sas, ry, c("stand", "sect"), src_y)

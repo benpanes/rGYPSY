@@ -2,6 +2,8 @@
 
 An R and Rcpp implementation of the Alberta Growth and Yield Projection System
 (GYPSY 2009). `GYPSY_Sim()` implements the core model logic through multiple subfunctions and projects stands year by year.
+It follows the GYPSY SAS program (GYPSY_run.sas) step by step and, where the
+GYPSY 2009 DLL differs from the SAS, the DLL.
 
 The model's components are exported and can be called individually:
 `GYPSY_SI()`, `GYPSY_SI_convert()`, `GYPSY_Age()`, `GYPSY_Ht()`,
@@ -58,7 +60,7 @@ separate argument:
 | `stand`     | Stand identifier. Each species can appear only once per stand.              |
 | `stand_age` | Stand age. Copied to the `standage` output column; not used in the model.  |
 | `spp`       | Species group: `AW` (aspen), `SB` (black spruce), `SW` (white spruce) or `PL` (lodgepole pine). |
-| `n`         | Density (stems/ha) at the given age, or the initial density (N0; at total age 0, AW at breast height age 0) with `ntype = "N0"`. |
+| `n`         | Density (stems/ha) at the given age, or the initial density (N0; at total age 0, AW at breast height age 0) with `ntype = "N0"`. 30 stems/ha or fewer gives a warning. |
 | `si`        | Site index (m). Breast height age 50 by default (`sitype = "B"`), or total age 50 with `sitype = "T"`. |
 | `age`       | Age (years). Total age by default (`agetype = "T"`), or breast height (`"B"`) or stump height (`"S"`) age. |
 | `ht`        | Top height (m).                                                             |
