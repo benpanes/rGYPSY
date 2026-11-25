@@ -70,6 +70,15 @@ start_rule_stands <- function(sas_stand, r) {
   sort(unique(bad))
 }
 
+# Stands whose observed age comes after the SAS's projection (200 years): the
+# SAS has no observed / predicted BA ratio for them, while rGYPSY, as the
+# DLL, projects far enough to get one
+beyond_sas_stands <- function(sas_stand, r) {
+  m <- align_sas(sas_stand, attr(r, "stand_init"), "stand", "stand")
+  bad <- unlist(lapply(.spp, function(s) m$stand[is.na(m[[paste0("sas.rate_", s)]]) & !is.na(m[[paste0(s, "_rate")]])]))
+  sort(unique(bad))
+}
+
 # Join SAS and R rows; SAS value columns get a "sas." prefix so names never clash
 align_sas <- function(sas, r, by_sas, by_r) {
   sas <- data.table::copy(sas)

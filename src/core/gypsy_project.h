@@ -107,8 +107,7 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
   }
 
   // Yearly state for the current stand (row r, species s -> [r*4 + s])
-  std::vector<double> TA1(simlen*4), BHA1(simlen*4), HT(simlen*4), DEN2(simlen*4),
-                      SC(simlen*4), SCB(simlen*4), BA1(simlen*4), BA2(simlen*4), T1(simlen);
+  std::vector<double> TA1, BHA1, HT, DEN2, SC, SCB, BA1, BA2, T1;
 
   for (std::size_t i = 0; i < ns; i++) {
     if (check_interrupt) check_interrupt();
@@ -127,13 +126,24 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
     double temp1 = tmax - std::ceil(tmax);
     double t0    = (temp1 != 0) ? tmax - (std::ceil(tmax) - 1.0) : 0.0;   // fractional leading total age
 
+    // Years projected inside: at least to the leading species' observed age,
+    // so every species' observed / predicted BA ratio exists even when
+    // simlen ends before it (the SAS stops at simlen; the DLL doesn't). Only
+    // simlen rows are output
+    int nk = simlen;
+    if (!miss(tmax)) nk = std::max(simlen, static_cast<int>(std::ceil(tmax - t0)) + 2);
+    for (std::vector<double>* v : {&TA1, &BHA1, &HT, &DEN2, &SC, &SCB, &BA1, &BA2})
+      v->assign(static_cast<std::size_t>(nk)*4, NaN);
+    T1.assign(nk, NaN);
+
     // ---- examp7 - examp11: species composition at BH age 0 -------------------
     double sc0[4] = {NaN, NaN, NaN, NaN};
     {
       double ta1[4]  = {NaN, NaN, NaN, NaN};
       double bha1[4] = {NaN, NaN, NaN, NaN};
       double t1 = t0 - 1.0;
-      for (int k = 0; k < alignlen; k++) {
+      // The SAS searches the first alignlen (180) years; the DLL, every year
+      for (int k = 0; k < std::max(alignlen, nk); k++) {
         t1 = (k == 0) ? t0 : t1 + 1.0;   // SAS: age1 = age1 + 1
         for (int s = 0; s < 4; s++) if (sv(diff[s]) >= 0) ta1[s] = t1 - diff[s];
         for (int s = 0; s < 4; s++) if (sv(ta1[s]) >= 0)  bha1[s] = ta1[s] - y2[s];
@@ -223,7 +233,7 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
       }
     };
 
-    for (int k = 0; k < simlen; k++) {
+    for (int k = 0; k < nk; k++) {
       double t1 = age1;
       for (int s = 0; s < 4; s++) if (sv(diff[s]) >= 0) ta1[s] = t1 - diff[s];
       for (int s = 0; s < 4; s++) if (sv(ta1[s]) >= 0)  bha1[s] = ta1[s] - y2[s];
@@ -283,8 +293,8 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
     // BA from the previous year of the same stand, zero before breast height
     // (the SAS lag1() runs across stands; the first year is always below
     // breast height, so this changes no result)
-    std::vector<double> BA1L(simlen*4), BA2L(simlen*4);
-    for (int k = 0; k < simlen; k++) {
+    std::vector<double> BA1L(nk*4), BA2L(nk*4);
+    for (int k = 0; k < nk; k++) {
       for (int s = 0; s < 4; s++) {
         int j = k*4 + s;
         BA1L[j] = (k > 0) ? BA1[j - 4] : NaN;
@@ -298,7 +308,7 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
     for (int s = 0; s < 4; s++) {
       if (!(sv(ta[s]) > 0)) continue;
       double key = sas_round(ta[s], 0.1);
-      for (int k = 0; k < simlen; k++) {
+      for (int k = 0; k < nk; k++) {
         int j = k*4 + s;
         if (sas_round(TA1[j], 0.1) != key) continue;
         if (sv(BA1L[j]) > 0 && sv(baobs[s]) > 0) rate[s] = baobs[s]/BA1L[j];
@@ -344,7 +354,9 @@ inline ProjectResult Project(const std::vector<StandInit>& st, const MerchStd& m
         // equations take (the SAS's k_); QMD = k x 2/sqrt(pi)
         double qmd = (sv(dens) > 0 && !miss(bl)) ? std::sqrt(bl/(dens/10000.0)) : NaN;
         double tvs = NaN, mvs = NaN, mns = NaN, maits = NaN, maims = NaN;
-        if (sv(hts) > 1.3 && !miss(bl)) {
+        // Past breast height (the SAS tests top height > 1.3 m, the same in
+        // exact arithmetic; the DLL tests BH age, which decides at the boundary)
+        if (sv(bha1s) > 0 && !miss(bl)) {
           tvs = TotVol(s, bl, hts);
           if (sv(qmd) > 0) {
             MerchResult m = Merch(s, tvs, qmd, hts, bha1s, dens,

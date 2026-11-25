@@ -176,7 +176,8 @@ inline Vec BAinc(const StrVec& spp, const Vec& bhage, const Vec& sc, const Vec& 
 }
 
 // ---- Total and merchantable volume (SAS examp18) -----------------------------------
-// Total volume needs top height > 1.3 m; merchantable values also need n > 0
+// Total volume needs the species past breast height: BH age > 0 when given
+// (as the GYPSY DLL tests it), else top height > 1.3 m; merchantable values also need n > 0
 // (through QMD). qmd is the quadratic mean diameter, sqrt(40000 BA / (pi N)).
 struct VolResult { Vec tvol, mvol, mn, qmd; };
 
@@ -191,7 +192,8 @@ inline VolResult Vol(const StrVec& spp, const Vec& ba, const Vec& topht, const V
     double k = (sv(n[i]) > 0) ? std::sqrt(ba[i]/(n[i]/10000.0)) : NaN;
     out.qmd[i] = miss(k) ? NaN : k*QMD_K;
 
-    if (sv(topht[i]) > 1.3) {
+    bool past_bh = miss(bhage[i]) ? sv(topht[i]) > 1.3 : bhage[i] > 0;
+    if (past_bh) {
       double tv = TotVol(s, ba[i], topht[i]);
       out.tvol[i] = tv;
       if (sv(k) > 0) {

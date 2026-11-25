@@ -20,11 +20,12 @@ GYPSY_Vol(
 
 \item{ba}{Basal area (m2/ha).}
 
-\item{topht}{Top height (m). Volume needs top height over 1.3 m.}
+\item{topht}{Top height (m).}
 
 \item{n}{Density (stems/ha).}
 
-\item{bhage}{Breast height age.}
+\item{bhage}{Breast height age. Volume needs the species past breast
+height: \code{bhage} above 0 or, where \code{bhage} is \code{NA}, \code{topht} above 1.3 m.}
 
 \item{stump_ht}{Stump height (m), at most 0.3.}
 

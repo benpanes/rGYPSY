@@ -276,9 +276,10 @@ GYPSY_BAinc <- function(spp,
 #'
 #' @param spp Species group: `"AW"`, `"SB"`, `"SW"` or `"PL"`.
 #' @param ba Basal area (m2/ha).
-#' @param topht Top height (m). Volume needs top height over 1.3 m.
+#' @param topht Top height (m).
 #' @param n Density (stems/ha).
-#' @param bhage Breast height age.
+#' @param bhage Breast height age. Volume needs the species past breast
+#'   height: `bhage` above 0 or, where `bhage` is `NA`, `topht` above 1.3 m.
 #' @param stump_ht Stump height (m), at most 0.3.
 #' @param stump_dob Minimum stump diameter outside bark (cm).
 #' @param top_dib Minimum top diameter inside bark (cm).

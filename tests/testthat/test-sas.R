@@ -19,13 +19,20 @@ test_that("only stand 8413 has a BA ignored below breast height", {
 
 # rGYPSY follows the GYPSY DLL's starting BA rule (D3), not the SAS's: in these
 # stands the composition at breast height age 0 counts, or the SW / PL BA
-# increment's competitors include, a species the SAS leaves out. Their early
-# BA and volume then differ too, so they are not compared.
+# increment's competitors include, a species the SAS leaves out, or a species
+# reaches breast height after the 180 years the SAS searches (1891). Their
+# early BA and volume then differ too, so they are not compared.
 skip_rule <- start_rule_stands(fx$stand, r1)
 test_that("the DLL's starting BA rule changes only the expected stands", {
-  expect_equal(skip_rule, c(869, 1879, 1899, 1930, 1963, 1980, 2007, 4455, 4782, 8829))
+  expect_equal(skip_rule, c(869, 1879, 1891, 1899, 1930, 1963, 1980, 2007, 4455, 4782, 8829))
 })
-skip <- c(skip_ba, skip_rule)
+# Leading species older than the SAS's 200 projected years: the SAS has no
+# observed / predicted BA ratio, rGYPSY (as the DLL) has
+skip_beyond <- beyond_sas_stands(fx$stand, r1)
+test_that("only stands older than the SAS projection get a ratio the SAS lacks", {
+  expect_equal(skip_beyond, c(1891, 9924, 9927, 10560, 10664, 10681))
+})
+skip <- c(skip_ba, skip_rule, skip_beyond)
 fx$stand  <- fx$stand[!fx$stand$stand %in% skip, ]
 fx$yearly <- fx$yearly[!fx$yearly$stand %in% skip, ]
 

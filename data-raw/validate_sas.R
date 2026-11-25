@@ -19,7 +19,9 @@
 #
 # Another script can set rgypsy_dir, data_dir, report_name, run_label and
 # run_sim() before sourcing this file, to validate a different build of the
-# model with the same comparisons (e.g. webGYPSY/test/validate_sas_wasm.R).
+# model with the same comparisons (e.g. webGYPSY/test/validate_sas_wasm.R),
+# or input_file and sas_csv to compare a different GYPSY_run.sas run (input
+# in the layout of test_gypsy_bp.xlsx, and the program's exported CSV).
 
 library(data.table)
 library(openxlsx)
@@ -36,7 +38,9 @@ spp_l <- c("aw", "sb", "sw", "pl")
 spp_u <- toupper(spp_l)
 
 # ---- Run GYPSY_Sim -------------------------------------------------------------
-inp <- as.data.table(read.xlsx(file.path(data_dir, "test_gypsy_bp.xlsx")))
+if(!exists("input_file")) input_file <- file.path(data_dir, "test_gypsy_bp.xlsx")
+if(!exists("sas_csv"))    sas_csv    <- file.path(data_dir, "for_gypsy_test_bp.csv")
+inp <- as.data.table(read.xlsx(input_file))
 
 if(!exists("run_sim")) run_sim <- function(stump_dob, top_dib) {
   suppressWarnings(GYPSY_Sim(inp$Stand, inp$Standage, inp$Species, inp$N,
@@ -160,6 +164,10 @@ for (k in 1:4) {
   # Derived intermediates (examp14, examp14_1)
   bh <- a("bhage")
   d2 <- nafill(a("n"), fill = 0)   # examp19 blanks 0 densities; SAS kept 0 here
+  if (s == "aw") {   # aspen from total age 0 takes its initial density, missing when it has no SDF
+    ta <- a("totage"); d0 <- init$aw_den0[match(r1$stand, init$stand)]
+    d2[is.na(a("n")) & !is.na(ta) & ta >= 0 & is.na(d0)] <- NA
+  }
   put_y(paste0("den2_", s, "_b"), ifelse(is.na(bh) | bh < 0, 0, d2), "derived")
   put_y(paste0("ba1_", s, "_1"), lag_ba(a("ba1"), bh), "derived")
   put_y(paste0("ba2_", s, "_1"), lag_ba(a("ba2"), bh), "derived")
@@ -207,7 +215,7 @@ for (s in spp_l) {
 }
 
 # ---- Read the SAS output ----------------------------------------------------------
-csv <- file.path(data_dir, "for_gypsy_test_bp.csv")
+csv <- sas_csv
 hdr <- names(fread(csv, nrows = 0))
 hdr_l <- tolower(hdr)
 keep <- hdr[hdr_l %in% c("stand", "sect", names(src_s), names(src_y))]
@@ -278,6 +286,35 @@ rule_skip <- sort(unique(unlist(lapply(spp_l, function(s) {
 cat(sprintf("Left out %d stand(s) where the DLL's starting BA rule differs from the SAS's
 ", length(rule_skip)))
 sas <- sas[!stand %in% rule_skip]
+
+# ... and stands whose observed age comes after the SAS's 200 projected years:
+# the SAS has no observed / predicted BA ratio, rGYPSY (as the DLL) has
+beyond_skip <- sort(unique(unlist(lapply(spp_l, function(s) {
+  a <- paste0("rate_", s)
+  s0$stand[is.na(s0[[paste0(a, ".sas")]]) & !is.na(s0[[paste0(a, ".r")]])]
+}))))
+beyond_skip <- setdiff(beyond_skip, rule_skip)
+cat(sprintf("Left out %d more stand(s) observed after the SAS's projection ends
+", length(beyond_skip)))
+sas <- sas[!stand %in% beyond_skip]
+
+# ... and stands with aspen just below breast height and an SDF (D1): rGYPSY,
+# as the DLL, grows it from BH age -1; the SAS only from BH age 0
+aw_skip <- rs$stand[!is.na(rs$bhage_aw) & rs$bhage_aw > -1 & rs$bhage_aw <= 0 & !is.na(rs$sdf_aw) & rs$sdf_aw > 0]
+cat(sprintf("Left out %d stand(s) with aspen just below breast height (D1)
+", length(aw_skip)))
+sas <- sas[!stand %in% aw_skip]
+
+# ... and stands with a species exactly at breast height in a projected year:
+# rGYPSY (as the DLL) computes volume once BH age is above 0, the SAS once top
+# height is above 1.3 m, and rounding can put the two on opposite sides
+edge_skip <- sort(unique(unlist(lapply(spp_l, function(s) {
+  b <- ry[[paste0("bhage1_", s)]]; h <- ry[[paste0("topht_", s)]]
+  ry$stand[!is.na(b) & b > 0 & !is.na(h) & h <= 1.3 + 1e-6]
+}))))
+cat(sprintf("Left out %d stand(s) with a species exactly at breast height in a projected year
+", length(edge_skip)))
+sas <- sas[!stand %in% edge_skip]
 
 # ... and its BA interpolation over the ratio cap where the lagged predicted BA
 # is 0 (D2): localized BA where the SAS has none
