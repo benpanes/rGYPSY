@@ -250,6 +250,15 @@ compare <- function(sas_dt, r_dt, keys, src) {
   }))
 }
 
+# GYPSY_Sim ignores a BA given for a species below breast height (BH age <= 0);
+# the SAS uses it, so those stands are left out
+ba_used <- inp[, .(Stand, BA, used = mapply(function(st, s) init[[paste0(tolower(s), "_ba")]][match(st, init$stand)],
+                                             Stand, Species))]
+ba_skip <- sort(unique(ba_used[!is.na(BA) & BA > 0 & is.na(used), Stand]))
+cat(sprintf("Left out %d stand(s) whose BA GYPSY_Sim ignores below breast height: %s\n",
+            length(ba_skip), paste(ba_skip, collapse = ", ")))
+sas <- sas[!stand %in% ba_skip]
+
 res_s <- compare(sas[sect == 1], rs, "stand", src_s)
 res_y <- compare(sas, ry, c("stand", "sect"), src_y)
 res <- rbind(cbind(level = "stand", res_s), cbind(level = "yearly", res_y))

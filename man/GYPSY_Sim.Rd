@@ -49,7 +49,9 @@ GYPSY_Sim(
 \item{ps}{Percent stocking (\code{NA} if unknown; non-numeric values such as
 \code{"."} are treated as missing).}
 
-\item{ba}{Basal area (m2/ha, \code{NA} if unknown).}
+\item{ba}{Basal area (m2/ha, \code{NA} if unknown). Ignored, with a warning,
+for a species that has not reached breast height at its age (breast
+height age at or below 0), since basal area comes from DBH.}
 
 \item{sitype}{\code{"B"} SI at breast height age 50, or \code{"T"} at total age 50.
 One value for all rows, or one per row so species can use different

@@ -230,6 +230,19 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
     warn.push_back("No SI for row(s) " + join_rows(no_si) +
                    " (age below 7.5 for AW/PL or 9.5 for SB/SW); these species are not grown but still count toward the leading age.");
 
+  // Basal area comes from DBH, so a species not yet at breast height (top
+  // height at or below bh at its age) can't have one: ignore it, as the RSA
+  // Compiler does
+  std::vector<int> ba_below_bh;
+  for (std::size_t i = 0; i < nr; i++)
+    if (sv(ba[i]) > 0 && !miss(bhage[i]) && bhage[i] <= 0) {
+      ba[i] = NaN;
+      ba_below_bh.push_back(static_cast<int>(i));
+    }
+  if (!ba_below_bh.empty())
+    warn.push_back("BA ignored for row(s) " + join_rows(ba_below_bh) +
+                   ": the species has not reached breast height at its age (breast height age <= 0).");
+
   // ---- 3. Leading age and species columns ---------------------------------------
   std::vector<StandInit> st(ns);
   std::vector<bool> seen(ns, false);

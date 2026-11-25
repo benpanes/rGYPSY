@@ -51,7 +51,9 @@ GYPSY_Sim_TI(
 \item{ps}{Percent stocking (\code{NA} if unknown; non-numeric values such as
 \code{"."} are treated as missing).}
 
-\item{ba}{Basal area (m2/ha, \code{NA} if unknown).}
+\item{ba}{Basal area (m2/ha, \code{NA} if unknown). Ignored, with a warning,
+for a species that has not reached breast height at its age (breast
+height age at or below 0), since basal area comes from DBH.}
 
 \item{gw}{Genetic worth for height at the selection age (\%), per row. 0
 leaves the row unadjusted. Only SW and PL rows can have a genetic worth;

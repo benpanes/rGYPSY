@@ -81,7 +81,8 @@ Optional inputs:
 - **Percent stocking (`ps`).** Converted to a percent stocking index, which
   adjusts the density and basal area increment models.
 - **Basal area (`ba`).** Used to localize the predicted basal area to the
-  observed value.
+  observed value. A basal area given for a species that hasn't reached
+  breast height at its age is ignored, with a warning.
 
 Set `psflag = 0` or `baflag = 0` to ignore these columns.
 

@@ -358,7 +358,9 @@ GYPSY_Vol <- function(spp,
 #' @param ht Top height (m).
 #' @param ps Percent stocking (`NA` if unknown; non-numeric values such as
 #'   `"."` are treated as missing).
-#' @param ba Basal area (m2/ha, `NA` if unknown).
+#' @param ba Basal area (m2/ha, `NA` if unknown). Ignored, with a warning,
+#'   for a species that has not reached breast height at its age (breast
+#'   height age at or below 0), since basal area comes from DBH.
 #' @param sitype `"B"` SI at breast height age 50, or `"T"` at total age 50.
 #'   One value for all rows, or one per row so species can use different
 #'   types.

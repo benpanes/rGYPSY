@@ -74,6 +74,24 @@ test_that("GYPSY_Sim reads inputs from a data table", {
   expect_error(GYPSY_Sim(inp), "use GYPSY_Sim\\(data = ...\\)")
 })
 
+test_that("GYPSY_Sim ignores BA for species below breast height", {
+  # PL at total age 5 with SI 18 is below breast height; SW at 30 is above it
+  args <- list(stand = c(1, 1), stand_age = c(30, 30), spp = c("SW", "PL"),
+               n = c(900, 1500), si = c(16, 18), age = c(30, 5), simlen = 60)
+  init <- attr(do.call(GYPSY_Sim, c(args, list(baflag = 0))), "stand_init")
+  expect_gt(init$sw_bhage, 0)
+  expect_lte(init$pl_bhage, 0)
+
+  expect_warning(out <- do.call(GYPSY_Sim, c(args, list(ba = c(8, 0.5)))),
+                 "BA ignored for row\\(s\\) 2: .*breast height")
+  expect_true(is.na(attr(out, "stand_init")$pl_ba))
+  expect_equal(attr(out, "stand_init")$sw_ba, 8)
+  expect_equal(out, suppressWarnings(do.call(GYPSY_Sim, c(args, list(ba = c(8, NA))))),
+               ignore_attr = TRUE)
+  # A zero BA is consistent with being below breast height: no warning
+  expect_no_warning(do.call(GYPSY_Sim, c(args, list(ba = c(8, 0)))))
+})
+
 test_that("GYPSY_Sim takes per-species merchantability standards", {
   base <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 100)
   alt  <- GYPSY_Sim(1, 60, "PL", 1500, age = 60, ht = 18, simlen = 100,

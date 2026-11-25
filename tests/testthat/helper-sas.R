@@ -48,6 +48,16 @@ yearly_map <- function(standard = 1) {
   m
 }
 
+# Stands where GYPSY_Sim ignored an input BA because the species was below
+# breast height. The SAS uses that BA, so these stands are left out of the
+# comparison.
+ba_ignored_stands <- function(inp, r) {
+  init <- attr(r, "stand_init")
+  spp  <- tolower(inp$Species)
+  used <- mapply(function(st, s) init[[paste0(s, "_ba")]][match(st, init$stand)], inp$Stand, spp)
+  sort(unique(inp$Stand[!is.na(inp$BA) & inp$BA > 0 & is.na(used)]))
+}
+
 # Join SAS and R rows; SAS value columns get a "sas." prefix so names never clash
 align_sas <- function(sas, r, by_sas, by_r) {
   sas <- data.table::copy(sas)

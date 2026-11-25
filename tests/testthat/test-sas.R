@@ -10,6 +10,15 @@ test_that("projection has one row per stand and year", {
   expect_equal(range(r1$year), c(1L, 200L))
 })
 
+# Stand 8413 gives a BA for PL at a top height of 1.3 m (breast height age 0).
+# GYPSY_Sim ignores it; the SAS uses it, so the stand is not compared.
+skip_ba <- ba_ignored_stands(fx$input, r1)
+test_that("only stand 8413 has a BA ignored below breast height", {
+  expect_equal(skip_ba, 8413)
+})
+fx$stand  <- fx$stand[!fx$stand$stand %in% skip_ba, ]
+fx$yearly <- fx$yearly[!fx$yearly$stand %in% skip_ba, ]
+
 test_that("stand-level SI, ages, PSI, SDF, initial density, SC0, BA0 match SAS", {
   m <- align_sas(fx$stand, attr(r1, "stand_init"), "stand", "stand")
   expect_equal(nrow(m), nrow(fx$stand))
