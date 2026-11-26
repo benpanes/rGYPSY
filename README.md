@@ -78,8 +78,11 @@ Each row needs two out of `si`, `age` and `ht` in order to calculate the third:
 - With `si` and `ht`, age is computed from them, and any supplied `age` is
   ignored.
 - A total age below 7.5 (AW, PL) or 9.5 (SB, SW) with a supplied `si` gives a
-  warning. It is projected if total age is above 0 (AW: breast height age
-  above -1); otherwise that species isn't grown.
+  warning. It is projected if total age is above 0; otherwise that species
+  isn't grown.
+- Aspen younger than its years to breast height (possible above 7.5 years on
+  poor sites) gives a warning, as the Yield Table Generator refuses it. It is
+  grown from breast height age -1, as the GYPSY DLL does, and not below.
 
 Optional inputs:
 

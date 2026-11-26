@@ -136,8 +136,11 @@ project as \code{NA}, with a warning.
 
 Total ages below GYPSY's minimum (7.5 years for AW and PL, 9.5 for SB and
 SW), which the GYPSY DLL rejects, give a warning when an SI is supplied:
-from total age 0 (AW: breast height age -1) they are projected anyway,
-below that the species isn't grown.
+above total age 0 they are projected anyway, at or below it the species
+isn't grown. Aspen younger than its years to breast height, which the
+Yield Table Generator refuses and which can pass the 7.5-year gate on poor
+sites, gets its own warning: it is grown from breast height age -1, as the
+GYPSY DLL does, and not below.
 
 The projection starts at the fractional part of the leading species' total
 age and runs \code{simlen} years. Observed basal area, when given, is used to

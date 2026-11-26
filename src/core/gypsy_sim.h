@@ -250,21 +250,27 @@ inline SimResult SimRun(const SimInput& in, const SimOptions& opt, const TIInput
                    " (age below 7.5 for AW/PL or 9.5 for SB/SW); these species are not grown but still count toward the leading age.");
 
   // Total ages below GYPSY's minimum with a supplied SI. The GYPSY DLL
-  // rejects any total age below 7.5 (AW, PL) or 9.5 (SB, SW). Here a species
-  // is grown from total age 0 (AW: breast height age -1, where the density
-  // model starts), below that it isn't
+  // rejects any total age below 7.5 (AW, PL) or 9.5 (SB, SW), and the Yield
+  // Table Generator also aspen younger than its years to breast height
+  // (which, on poor sites, can be more than 7.5). Here a species is grown
+  // from total age 0 (AW: breast height age -1, where the density model
+  // starts), below that it isn't
   {
-    std::vector<int> not_grown, below_min;
+    std::vector<int> not_grown, aw_below_bh, below_min;
     for (std::size_t i = 0; i < nr; i++) {
       if (miss(si_t[i]) || miss(totage[i]) || !(sv(in.n[i]) > 0)) continue;
       double min_age = (spp[i] == AW || spp[i] == PL) ? 7.5 : 9.5;
-      bool grown = spp[i] == AW ? sv(bhage[i]) > -1 : totage[i] > 0;
-      if (!grown) not_grown.push_back(static_cast<int>(i));
+      if (!(totage[i] > 0)) not_grown.push_back(static_cast<int>(i));
+      else if (spp[i] == AW && !miss(bhage[i]) && bhage[i] < 0) aw_below_bh.push_back(static_cast<int>(i));
       else if (totage[i] < min_age) below_min.push_back(static_cast<int>(i));
     }
     if (!not_grown.empty())
-      warn.push_back("Total age at or below 0 (AW: breast height age at or below -1) in row(s) " + join_rows(not_grown) +
+      warn.push_back("Total age at or below 0 in row(s) " + join_rows(not_grown) +
                      ": the species isn't established yet; not grown.");
+    if (!aw_below_bh.empty())
+      warn.push_back("Aspen total age below its years to breast height in row(s) " + join_rows(aw_below_bh) +
+                     ": the aspen hasn't reached breast height for its site index (the Yield Table Generator refuses these); "
+                     "grown from breast height age -1, as the GYPSY DLL does, not grown below it.");
     if (!below_min.empty())
       warn.push_back("Total age below 7.5 (AW, PL) or 9.5 (SB, SW) in row(s) " + join_rows(below_min) +
                      ": below GYPSY's minimum (the GYPSY DLL rejects these); projected anyway.");
