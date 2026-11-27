@@ -1,7 +1,7 @@
 Package: rGYPSY
 Type: Package
 Title: R Version of GYPSY Functions
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: c(
     person(
       "Benjamin", "Panes",
